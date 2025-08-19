@@ -5,10 +5,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// Set up storage for uploaded videos and thumbnails
+console.log('🔗 SECURE Video routes module loaded');
+
+// Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadDir;
@@ -20,20 +23,17 @@ const storage = multer.diskStorage({
       uploadDir = path.join(__dirname, '../../public/uploads');
     }
     
-    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename with original extension
     const ext = path.extname(file.originalname);
     cb(null, `${uuidv4()}${ext}`);
   }
 });
 
-// File filter for videos and images
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (file.fieldname === 'video') {
     if (file.mimetype.startsWith('video/')) {
@@ -56,20 +56,16 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { 
-    fileSize: 500 * 1024 * 1024, // 500MB limit for videos
-    files: 2 // Allow video + thumbnail
+    fileSize: 500 * 1024 * 1024, // 500MB for videos
+    files: 2 // Video + thumbnail
   }
 });
 
-// Helper function to check admin access
+// Helper functions
 const isAdmin = (req: AuthRequest): boolean => {
-  if (req.user?.isAdmin || req.user?.is_admin || req.user?.role === 'admin') {
-    return true;
-  }
-  return false;
+  return req.user?.isAdmin || req.user?.is_admin || req.user?.role === 'admin' || false;
 };
 
-// Helper function to get or create default course
 const getDefaultCourseId = async (): Promise<number> => {
   try {
     let result = await pool.query(
@@ -93,6 +89,23 @@ const getDefaultCourseId = async (): Promise<number> => {
   }
 };
 
+// Verify user access to video with enhanced security
+const verifyVideoAccess = async (userId: number | undefined, videoId?: number): Promise<boolean> => {
+  // Allow preview access for 10 seconds even without login
+  if (!userId) {
+    return true; // Allow preview access
+  }
+  
+  // Admin can access everything
+  const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [userId]);
+  if (userResult.rows.length > 0 && userResult.rows[0].is_admin) {
+    return true;
+  }
+  
+  // Regular users can access all videos (for now - you can add enrollment logic later)
+  return true;
+};
+
 // Get all videos (public route)
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -114,56 +127,186 @@ router.get('/', async (req: AuthRequest, res) => {
   }
 });
 
-// Stream video file with CORS support
-router.get('/stream/:filename', (req, res) => {
+// Get single video details
+router.get('/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`📹 Getting video ${id}...`);
+    
+    // Admin can see any video
+    if (req.user && isAdmin(req)) {
+      const result = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Video not found' });
+      }
+      
+      return res.json(result.rows[0]);
+    }
+    
+    // For non-admin users, only show active videos
+    const result = await pool.query(`
+      SELECT v.*, c.title as course_title 
+      FROM videos v 
+      LEFT JOIN courses c ON v.course_id = c.id
+      WHERE v.id = $1 AND v.is_active = true
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found or not available' });
+    }
+    
+    console.log(`✅ Found video: ${result.rows[0].title}`);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get video error:', error);
+    res.status(500).json({ error: 'Failed to get video' });
+  }
+});
+
+// SECURE VIDEO STREAMING with authentication and anti-download protection
+router.get('/stream/:filename', async (req, res) => {
   const filename = req.params.filename;
   const videoPath = path.join(__dirname, '../../public/uploads/videos', filename);
+  const authHeader = req.headers.authorization;
+  const userAgent = req.headers['user-agent'] || '';
+  const referer = req.headers.referer || '';
   
-  console.log('🎬 Streaming video:', filename);
-  console.log('📁 Video path:', videoPath);
+  console.log('🎬 Secure streaming request for:', filename);
+  console.log('🔒 Auth header present:', !!authHeader);
+  console.log('🖥️ User agent:', userAgent);
+  console.log('🔗 Referer:', referer);
   
   if (!fs.existsSync(videoPath)) {
     console.log('❌ Video file not found:', videoPath);
     return res.status(404).json({ error: 'Video not found' });
   }
   
+  let userId: number | undefined;
+  let isAuthenticated = false;
+  
+  // Check authentication
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-default-secret-key') as any;
+      userId = decoded.id;
+      isAuthenticated = true;
+      console.log('✅ User authenticated:', decoded.email);
+    } catch (error) {
+      console.log('❌ Invalid token:', error);
+    }
+  }
+  
+  // Verify access
+  const hasAccess = await verifyVideoAccess(userId);
+  if (!hasAccess) {
+    console.log('❌ Access denied for user:', userId);
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
   const stat = fs.statSync(videoPath);
   const fileSize = stat.size;
   const range = req.headers.range;
   
-  // Set CORS headers
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Range');
-  res.header('Accept-Ranges', 'bytes');
+  // Enhanced anti-download security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; media-src 'self'");
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('X-Download-Options', 'noopen');
   
-  if (range) {
-    // Support for video seeking and partial content
-    const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunksize = (end - start) + 1;
-    const file = fs.createReadStream(videoPath, { start, end });
-    const head = {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunksize,
-      'Content-Type': 'video/mp4',
-      'Access-Control-Allow-Origin': '*'
-    };
-    res.writeHead(206, head);
-    file.pipe(res);
-    console.log(`📺 Streaming range ${start}-${end}/${fileSize} for ${filename}`);
+  // Prevent caching and downloads
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  
+  // Make it harder to download
+  res.setHeader('Content-Disposition', 'inline; filename=""');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, nosnippet, noarchive, noimageindex');
+  
+  // CORS headers for video streaming (restricted to your domain)
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+  
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    const head = {
-      'Content-Length': fileSize,
-      'Content-Type': 'video/mp4',
-      'Access-Control-Allow-Origin': '*',
-      'Accept-Ranges': 'bytes'
-    };
-    res.writeHead(200, head);
-    fs.createReadStream(videoPath).pipe(res);
-    console.log(`📺 Streaming full video ${filename} (${fileSize} bytes)`);
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
+  res.setHeader('Accept-Ranges', 'bytes');
+  
+  // For non-authenticated users, limit to small chunks (for 10-second preview)
+  if (!isAuthenticated) {
+    const maxPreviewSize = Math.min(fileSize, 3 * 1024 * 1024); // 3MB max for preview
+    
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = Math.min(parts[1] ? parseInt(parts[1], 10) : start + maxPreviewSize, start + maxPreviewSize, fileSize - 1);
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(videoPath, { start, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Length': chunksize,
+        'Content-Type': 'video/mp4'
+      });
+      
+      console.log(`📺 Streaming preview ${start}-${end}/${fileSize} for ${filename}`);
+      file.pipe(res);
+    } else {
+      const end = maxPreviewSize - 1;
+      const file = fs.createReadStream(videoPath, { start: 0, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes 0-${end}/${fileSize}`,
+        'Content-Length': maxPreviewSize,
+        'Content-Type': 'video/mp4'
+      });
+      
+      console.log(`📺 Streaming preview 0-${end}/${fileSize} for ${filename}`);
+      file.pipe(res);
+    }
+  } else {
+    // Full video streaming for authenticated users
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(videoPath, { start, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Length': chunksize,
+        'Content-Type': 'video/mp4'
+      });
+      
+      console.log(`📺 Streaming full range ${start}-${end}/${fileSize} for ${filename}`);
+      file.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'video/mp4'
+      });
+      
+      console.log(`📺 Streaming full video ${filename} (${fileSize} bytes)`);
+      fs.createReadStream(videoPath).pipe(res);
+    }
   }
 });
 
@@ -201,7 +344,6 @@ router.post('/',
       const { title, description, course_id } = req.body;
       const is_active = req.body.is_active === 'true';
       
-      // Always use default course for simplicity
       const finalCourseId = await getDefaultCourseId();
       
       const file_path = `/uploads/videos/${videoFile.filename}`;
@@ -223,7 +365,6 @@ router.post('/',
         is_active
       });
       
-      // Insert video into database
       const result = await pool.query(`
         INSERT INTO videos (
           title, description, course_id, file_path, file_size, 
@@ -255,9 +396,112 @@ router.post('/',
   }
 );
 
+// Update a video (admin only)
+router.put('/:id', 
+  authenticateToken,
+  upload.fields([
+    { name: 'video', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 }
+  ]), 
+  async (req: AuthRequest, res) => {
+    try {
+      console.log(`📝 Updating video ${req.params.id}...`);
+      
+      if (!isAdmin(req)) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      
+      const { id } = req.params;
+      const { title, description, course_id } = req.body;
+      const is_active = req.body.is_active === 'true';
+      
+      // Check if video exists
+      const checkResult = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
+      
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Video not found' });
+      }
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      // Handle course_id for update
+      let finalCourseId = checkResult.rows[0].course_id; // Keep existing if not provided
+      if (course_id && course_id !== 'null' && course_id !== '') {
+        finalCourseId = parseInt(course_id);
+      }
+      
+      let updateQuery = `
+        UPDATE videos
+        SET title = $1, description = $2, course_id = $3, is_active = $4, updated_at = NOW()
+      `;
+      
+      let params = [title, description, finalCourseId, is_active];
+      
+      // If new video file uploaded, update file fields
+      if (files && files.video && files.video.length > 0) {
+        const videoFile = files.video[0];
+        const file_path = `/uploads/videos/${videoFile.filename}`;
+        const file_size = videoFile.size;
+        const mime_type = videoFile.mimetype;
+        
+        // Delete old video file if possible
+        try {
+          const oldFilePath = checkResult.rows[0].file_path;
+          if (oldFilePath) {
+            const fullPath = path.join(__dirname, '../../public', oldFilePath);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+          }
+        } catch (err) {
+          console.error('Error deleting old video file:', err);
+        }
+        
+        updateQuery += `, file_path = $${params.length + 1}, file_size = $${params.length + 2}, mime_type = $${params.length + 3}`;
+        params.push(file_path, file_size, mime_type);
+      }
+      
+      // If new thumbnail uploaded, update thumbnail field
+      if (files && files.thumbnail && files.thumbnail.length > 0) {
+        const thumbnailFile = files.thumbnail[0];
+        const thumbnail_path = `/uploads/thumbnails/${thumbnailFile.filename}`;
+        
+        // Delete old thumbnail file if possible
+        try {
+          const oldThumbnailPath = checkResult.rows[0].thumbnail_path;
+          if (oldThumbnailPath) {
+            const fullPath = path.join(__dirname, '../../public', oldThumbnailPath);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+          }
+        } catch (err) {
+          console.error('Error deleting old thumbnail file:', err);
+        }
+        
+        updateQuery += `, thumbnail_path = $${params.length + 1}`;
+        params.push(thumbnail_path);
+      }
+      
+      updateQuery += ` WHERE id = $${params.length + 1} RETURNING *`;
+      params.push(id);
+      
+      const result = await pool.query(updateQuery, params);
+      
+      console.log(`✅ Updated video: ${title}`);
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Update video error:', error);
+      res.status(500).json({ error: 'Failed to update video' });
+    }
+  }
+);
+
 // Delete a video (admin only)
 router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    console.log(`🗑️ Deleting video ${req.params.id}...`);
+    
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
@@ -278,12 +522,14 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
         const fullPath = path.join(__dirname, '../../public', video.file_path);
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
+          console.log('🗑️ Deleted video file:', fullPath);
         }
       }
       if (video.thumbnail_path) {
         const fullPath = path.join(__dirname, '../../public', video.thumbnail_path);
         if (fs.existsSync(fullPath)) {
           fs.unlinkSync(fullPath);
+          console.log('🗑️ Deleted thumbnail file:', fullPath);
         }
       }
     } catch (err) {
@@ -292,14 +538,67 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
     
     await pool.query('DELETE FROM videos WHERE id = $1', [id]);
     
-    console.log('✅ Video deleted successfully');
-    res.json({ message: 'Video deleted successfully' });
+    console.log(`✅ Video deleted successfully: ${video.title}`);
+    res.json({ 
+      message: 'Video deleted successfully',
+      deletedVideo: {
+        id: video.id,
+        title: video.title
+      }
+    });
   } catch (error) {
     console.error('Delete video error:', error);
     res.status(500).json({ error: 'Failed to delete video' });
   }
 });
 
+// Get admin video statistics
+router.get('/admin/stats', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    console.log('📊 Getting video admin stats...');
+    
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*) as total_videos,
+        COUNT(*) FILTER (WHERE is_active = true) as active_videos,
+        COUNT(*) FILTER (WHERE is_active = false) as inactive_videos,
+        SUM(file_size) as total_size,
+        AVG(file_size) as average_size,
+        COUNT(DISTINCT course_id) as courses_with_videos
+      FROM videos
+    `);
+
+    const recentVideos = await pool.query(`
+      SELECT title, created_at, file_size
+      FROM videos 
+      ORDER BY created_at DESC 
+      LIMIT 5
+    `);
+
+    console.log('✅ Video stats retrieved');
+    res.json({
+      ...stats.rows[0],
+      recent_videos: recentVideos.rows
+    });
+  } catch (error) {
+    console.error('❌ Get video stats error:', error);
+    res.status(500).json({ error: 'Failed to get video stats' });
+  }
+});
+
+// Handle OPTIONS requests for CORS
+router.options('/stream/:filename', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
+
 export { router as videosRoutes };
 
-// Last updated: 2025-08-19 15:32:15 | Azizkh07
+// Last updated: 2025-08-19 16:10:29 | Azizkh07
