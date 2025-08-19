@@ -1,7 +1,6 @@
 import app from './app';
 import { config } from './config';
 import { pool } from './database';
-import { usersRoutes } from './routes/users';
 
 const startServer = async () => {
   try {
@@ -9,7 +8,7 @@ const startServer = async () => {
     await pool.query('SELECT NOW()');
     console.log('✅ Database connected successfully');
 
-    // Check if admin exists (using YOUR columns - is_admin, is_approved)
+    // Check if admin exists
     const adminCheck = await pool.query(
       'SELECT email, is_admin, is_approved FROM users WHERE is_admin = true'
     );
@@ -22,7 +21,7 @@ const startServer = async () => {
         is_approved: u.is_approved
       })));
     }
-    app.use('/api/users', usersRoutes);
+    
     // Start server
     app.listen(config.port, () => {
       console.log(`🚀 Server running on port ${config.port}`);
