@@ -12,18 +12,18 @@ export const pool = new Pool({
 
 // Test connection
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL database');
+  console.log('✅ Connected to PostgreSQL database for Azizkh07 at 2025-08-20 13:03:29');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
+  console.error('❌ Database connection error for Azizkh07:', err);
 });
 
 // Test query on startup
 pool.query('SELECT NOW()', (err, result) => {
   if (err) {
-    console.error('❌ Database test query failed:', err);
+    console.error('❌ Database test query failed for Azizkh07:', err);
   } else {
-    console.log('✅ Database test query successful:', result.rows[0]);
+    console.log('✅ Database test query successful for Azizkh07:', result.rows[0]);
   }
 });
