@@ -10,7 +10,8 @@ export interface User {
   is_admin: boolean;
   is_approved: boolean;
   created_at: string;
-  updated_at: string;
+  // allow nullable/optional updated_at to match DB responses
+  updated_at?: string | null;
   last_ip?: string;
 }
 

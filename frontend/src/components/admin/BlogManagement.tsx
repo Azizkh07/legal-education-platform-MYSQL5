@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { apiClient } from '../../services/api';
+import api, { apiUtils } from '../../lib/api'; // adjust path if your api instance lives elsewhere
 
 interface BlogPost {
   id: number;
   title: string;
-  slug: string;
+  slug?: string;
   content: string;
   excerpt?: string;
   cover_image?: string;
   published: boolean;
-  author_id: number;
+  author_id?: number;
   author_name?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface BlogStats {
@@ -68,7 +68,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   );
 };
 
-const BlogManagement = () => {
+const BlogManagement: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [stats, setStats] = useState<BlogStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ const BlogManagement = () => {
   const [showEditor, setShowEditor] = useState(false);
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -98,44 +98,50 @@ const BlogManagement = () => {
   });
 
   useEffect(() => {
+    // If token expired or missing, fetch calls will throw; handle there.
     fetchPosts();
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, searchTerm]);
+
+  const handleAuthError = (err: any) => {
+    const msg = err?.message || String(err);
+    if (msg.toLowerCase().includes('token expired') || msg.toLowerCase().includes('access token required')) {
+      alert('Votre session a expiré. Veuillez vous reconnecter.');
+      api.clearAuthData();
+      // reload to show login screen (or redirect to /login)
+      window.location.reload();
+      return true;
+    }
+    return false;
+  };
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      
+
       if (filter !== 'all') {
         params.append('published', filter === 'published' ? 'true' : 'false');
       }
-      
+
       if (searchTerm) {
         params.append('search', searchTerm);
       }
 
       console.log('🔍 Fetching posts...');
+      const data = await api.get<{ success: boolean; posts?: BlogPost[]; error?: any }>(`/blog?${params.toString()}`);
 
-      const response = await apiClient.get(`/api/blog?${params.toString()}`);
-
-      console.log('📡 Posts response status:', response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('📊 Posts data:', data);
-
-      if (data.success) {
-        setPosts(data.posts || []);
+      // The API client returns parsed JSON. Adjust to your API shape.
+      if (data && (data as any).success) {
+        setPosts((data as any).posts || []);
       } else {
-        console.error('❌ API returned error:', data.error);
+        console.error('❌ API returned error when fetching posts:', data);
         setPosts([]);
       }
     } catch (error) {
       console.error('❌ Error fetching posts:', error);
+      if (handleAuthError(error)) return;
       setPosts([]);
     } finally {
       setLoading(false);
@@ -145,26 +151,28 @@ const BlogManagement = () => {
   const fetchStats = async () => {
     try {
       console.log('📊 Fetching stats...');
+      // admin stats endpoint
+      const data = await api.get<{ success: boolean; stats?: BlogStats; error?: any }>(`/blog/admin/stats`);
 
-      const response = await apiClient.get('/api/blog/admin/stats');
-
-      console.log('📈 Stats response status:', response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('📊 Stats data:', data);
-
-      if (data.success) {
-        setStats(data.stats);
+      if (data && (data as any).success) {
+        setStats((data as any).stats || {
+          total_posts: 0,
+          published_posts: 0,
+          draft_posts: 0,
+          total_authors: 0
+        });
       } else {
-        console.error('❌ Stats API returned error:', data.error);
+        console.error('❌ Stats API returned error:', data);
+        setStats({
+          total_posts: 0,
+          published_posts: 0,
+          draft_posts: 0,
+          total_authors: 0
+        });
       }
     } catch (error) {
       console.error('❌ Error fetching stats:', error);
-      // Set default stats if API fails
+      if (handleAuthError(error)) return;
       setStats({
         total_posts: 0,
         published_posts: 0,
@@ -174,59 +182,49 @@ const BlogManagement = () => {
     }
   };
 
- // In your handleSubmit function, replace the API calls with:
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  try {
-    console.log('💾 BlogManagement: Submitting form data:', formData);
+    try {
+      console.log('💾 BlogManagement: Submitting form data:', formData);
 
-    const formDataToSend = new FormData();
-    formDataToSend.append('title', formData.title);
-    formDataToSend.append('content', formData.content);
-    formDataToSend.append('excerpt', formData.excerpt);
-    formDataToSend.append('published', formData.published.toString());
-    
-    if (formData.cover_image) {
-      formDataToSend.append('cover_image', formData.cover_image);
+      const payload = new FormData();
+      payload.append('title', formData.title);
+      payload.append('content', formData.content);
+      payload.append('excerpt', formData.excerpt);
+      payload.append('published', String(formData.published));
+
+      if (formData.cover_image) {
+        payload.append('cover_image', formData.cover_image);
+      }
+
+      const endpoint = selectedPost ? `/blog/${selectedPost.id}` : '/blog';
+      console.log(`🚀 BlogManagement: ${selectedPost ? 'PUT' : 'POST'} request to: ${endpoint}`);
+
+      // api.post/put will attach auth header and handle FormData correctly
+      const result = selectedPost
+        ? await api.put<{ success: boolean; post?: BlogPost; error?: any }>(endpoint, payload)
+        : await api.post<{ success: boolean; post?: BlogPost; error?: any }>(endpoint, payload);
+
+      // result is parsed JSON (api client returns parsed body)
+      if (result && (result as any).success) {
+        alert(`✅ Article ${selectedPost ? 'modifié' : 'créé'} avec succès!`);
+        setShowEditor(false);
+        setSelectedPost(null);
+        resetForm();
+        fetchPosts();
+        fetchStats();
+      } else {
+        console.error('❌ BlogManagement: API error when saving post:', result);
+        if ((result as any)?.error) alert(`❌ Erreur: ${(result as any).error}`);
+        else alert('❌ Erreur lors de la sauvegarde.');
+      }
+    } catch (error) {
+      console.error('❌ BlogManagement: Error saving post:', error);
+      if (handleAuthError(error)) return;
+      alert('❌ Erreur lors de la sauvegarde. Vérifiez que le backend est en marche.');
     }
-
-    const endpoint = selectedPost ? `/api/blog/${selectedPost.id}` : '/api/blog';
-    
-    console.log(`🚀 BlogManagement: ${selectedPost ? 'PUT' : 'POST'} request to:`, endpoint);
-
-    // Use the regular methods instead of putMultipart/postMultipart
-    const response = selectedPost 
-      ? await apiClient.put(endpoint, formDataToSend)
-      : await apiClient.post(endpoint, formDataToSend);
-
-    console.log('📡 BlogManagement: Submit response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ BlogManagement: Response error:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('✅ BlogManagement: Submit response data:', data);
-
-    if (data.success) {
-      alert(`✅ Article ${selectedPost ? 'modifié' : 'créé'} avec succès!`);
-      setShowEditor(false);
-      setSelectedPost(null);
-      resetForm();
-      fetchPosts();
-      fetchStats();
-    } else {
-      alert(`❌ Erreur: ${data.error}`);
-    }
-  } catch (error) {
-    console.error('❌ BlogManagement: Error saving post:', error);
-    alert('❌ Erreur lors de la sauvegarde. Vérifiez que le backend est en marche.');
-  }
-};
+  };
 
   const handleDeleteRequest = (post: BlogPost) => {
     setConfirmModal({
@@ -236,38 +234,23 @@ const handleSubmit = async (e: React.FormEvent) => {
     });
   };
 
-  // Add this function to check if user is logged in
-const checkAuthStatus = () => {
-  const token = localStorage.getItem('token');
-  console.log('🔍 Auth check - Token exists:', !!token);
-  console.log('🔍 Auth check - Token preview:', token ? token.substring(0, 20) + '...' : 'No token');
-  return !!token;
-};
-
-// Update the testConnection function
-
-
   const handleDeleteConfirm = async () => {
     if (!confirmModal.postId) return;
 
     try {
-      const response = await apiClient.delete(`/api/blog/${confirmModal.postId}`);
+      const result = await api.delete<{ success: boolean; error?: any }>(`/blog/${confirmModal.postId}`);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
+      if (result && (result as any).success) {
         alert('✅ Article supprimé avec succès!');
         fetchPosts();
         fetchStats();
       } else {
-        alert(`❌ Erreur: ${data.error}`);
+        console.error('❌ Delete error:', result);
+        alert(`❌ Erreur: ${(result as any)?.error || 'Impossible de supprimer l\'article'}`);
       }
     } catch (error) {
       console.error('❌ Error deleting post:', error);
+      if (handleAuthError(error)) return;
       alert('❌ Erreur lors de la suppression');
     } finally {
       setConfirmModal({ isOpen: false, postId: null, postTitle: '' });
@@ -306,28 +289,41 @@ const checkAuthStatus = () => {
     setShowEditor(true);
   };
 
-  // Test backend connection
+  // New checkAuthStatus uses the same auth key as the client (authToken)
+  const checkAuthStatus = () => {
+    const token = apiUtils.getAuthToken();
+    console.log('🔍 Auth check - Token exists:', !!token);
+    return !!token;
+  };
+
+  // Test backend connection (uses api and respects auth)
   const testConnection = async () => {
     try {
       console.log('🔗 BlogManagement: Testing backend connection...');
       console.log('🔍 Auth status:', checkAuthStatus());
-      
-      const response = await apiClient.get('/api/blog');
-      console.log('📡 Test connection response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        alert(`✅ Backend connection OK! Found ${data.posts?.length || 0} posts.`);
-      } else if (response.status === 401) {
-        alert('❌ Authentication failed! Please login again.');
+
+      const data = await api.get<{ success: boolean; posts?: BlogPost[] }>(`/blog`);
+      // api.get returns parsed JSON; inspect it
+      if (data && (data as any).success) {
+        alert(`✅ Backend connection OK! Found ${(data as any).posts?.length || 0} posts.`);
       } else {
-        alert(`❌ Backend error: ${response.status}`);
+        alert('❌ Backend responded but returned an error or unexpected format.');
       }
     } catch (error) {
       console.error('❌ BlogManagement: Connection test failed:', error);
+      if (handleAuthError(error)) return;
       alert('❌ Cannot connect to backend. Make sure it\'s running on http://localhost:5000');
     }
   };
+
+  // Helper to show cover image URL fallback (protect against relative paths)
+  const coverImageSrc = (cover?: string) => {
+    if (!cover) return '';
+    // If backend serves /uploads/... then keep full path; if stored as relative, ensure prefix
+    if (cover.startsWith('http') || cover.startsWith('/')) return cover;
+    return `/uploads/${cover}`;
+  };
+
   if (showEditor) {
     return (
       <div className="space-y-6">
@@ -335,11 +331,9 @@ const checkAuthStatus = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              📝 {selectedPost ? 'Modifier l\'article' : 'Nouvel article'}
+              📝 {selectedPost ? "Modifier l'article" : 'Nouvel article'}
             </h2>
-            <p className="text-gray-600">
-              {selectedPost ? 'Modifiez les informations de l\'article' : 'Créez un nouvel article de blog'}
-            </p>
+            <p className="text-gray-600">{selectedPost ? "Modifiez l'article" : 'Créez un nouvel article de blog'}</p>
           </div>
           <div className="flex space-x-2">
             <button
@@ -349,7 +343,7 @@ const checkAuthStatus = () => {
               🔗 Test Backend
             </button>
             <button
-              onClick={() => {setShowEditor(false); setSelectedPost(null);}}
+              onClick={() => { setShowEditor(false); setSelectedPost(null); }}
               className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
             >
               ← Retour
@@ -362,14 +356,12 @@ const checkAuthStatus = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Titre de l'article *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Titre de l'article *</label>
               <input
                 type="text"
                 required
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 placeholder="Entrez le titre de l'article..."
               />
@@ -377,12 +369,10 @@ const checkAuthStatus = () => {
 
             {/* Excerpt */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Résumé (optionnel)
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Résumé (optionnel)</label>
               <textarea
                 value={formData.excerpt}
-                onChange={(e) => setFormData({...formData, excerpt: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 placeholder="Résumé court de l'article..."
@@ -391,39 +381,33 @@ const checkAuthStatus = () => {
 
             {/* Content */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Contenu de l'article *
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Contenu de l'article *</label>
               <textarea
                 required
                 value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 rows={15}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 font-mono text-sm"
                 placeholder="Écrivez le contenu de votre article en Markdown ou HTML..."
               />
-              <p className="text-xs text-gray-500 mt-1">
-                💡 Vous pouvez utiliser du HTML ou Markdown pour le formatage
-              </p>
+              <p className="text-xs text-gray-500 mt-1">💡 Vous pouvez utiliser du HTML ou Markdown pour le formatage</p>
             </div>
 
             {/* Cover Image */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Image de couverture
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Image de couverture</label>
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setFormData({...formData, cover_image: e.target.files?.[0] || null})}
+                onChange={(e) => setFormData({ ...formData, cover_image: e.target.files?.[0] || null })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
               />
               {selectedPost?.cover_image && (
                 <div className="mt-2">
                   <p className="text-sm text-gray-600">Image actuelle:</p>
-                  <img 
-                    src={selectedPost.cover_image} 
-                    alt="Current cover" 
+                  <img
+                    src={coverImageSrc(selectedPost.cover_image)}
+                    alt="Current cover"
                     className="mt-1 h-20 w-32 object-cover rounded-lg border border-gray-200"
                   />
                 </div>
@@ -436,12 +420,10 @@ const checkAuthStatus = () => {
                 type="checkbox"
                 id="published"
                 checked={formData.published}
-                onChange={(e) => setFormData({...formData, published: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label htmlFor="published" className="text-sm font-medium text-gray-700">
-                Publier l'article immédiatement
-              </label>
+              <label htmlFor="published" className="text-sm font-medium text-gray-700">Publier l'article immédiatement</label>
             </div>
 
             {/* Submit Button */}
@@ -450,7 +432,7 @@ const checkAuthStatus = () => {
                 type="submit"
                 className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
               >
-                {selectedPost ? '💾 Modifier l\'article' : '✨ Créer l\'article'}
+                {selectedPost ? "💾 Modifier l'article" : "✨ Créer l'article"}
               </button>
             </div>
           </form>
@@ -551,7 +533,7 @@ const checkAuthStatus = () => {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {filterOption === 'all' ? 'Tous' : 
+                {filterOption === 'all' ? 'Tous' :
                  filterOption === 'published' ? 'Publiés' : 'Brouillons'}
               </button>
             ))}
@@ -587,8 +569,8 @@ const checkAuthStatus = () => {
                 <div className="flex items-start space-x-4">
                   {/* Cover Image */}
                   {post.cover_image ? (
-                    <img 
-                      src={post.cover_image} 
+                    <img
+                      src={coverImageSrc(post.cover_image)}
                       alt={post.title}
                       className="w-20 h-20 object-cover rounded-lg border border-gray-200"
                     />
@@ -602,22 +584,16 @@ const checkAuthStatus = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
-                          {post.title}
-                        </h3>
-                        {post.excerpt && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {post.excerpt}
-                          </p>
-                        )}
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">{post.title}</h3>
+                        {post.excerpt && <p className="text-sm text-gray-600 mt-1 line-clamp-2">{post.excerpt}</p>}
                         <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                          <span>👤 {post.author_name}</span>
-                          <span>📅 {new Date(post.created_at).toLocaleDateString('fr-FR')}</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            post.published 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span>👤 {post.author_name || '—'}</span>
+                          <span>📅 {post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR') : '—'}</span>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              post.published ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                            }`}
+                          >
                             {post.published ? '✅ Publié' : '📄 Brouillon'}
                           </span>
                         </div>

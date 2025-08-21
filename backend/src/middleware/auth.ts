@@ -1,72 +1,58 @@
-import * as jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { pool } from '../database';
-import { config } from '../config';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
+  // Allow preflight requests through
+  if (req.method === 'OPTIONS') return next();
 
-export interface AuthRequest extends Request {
-  user?: {
-    id: number;
-    email: string;
-    role: string;
-    isAdmin: boolean;
-  };
-}
-
-
-export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
+  // Support Authorization: Bearer <token> and x-access-token header
+  const header = (req.headers['authorization'] as string) || (req.headers['x-access-token'] as string);
+  if (!header) {
+    console.warn('[auth] Missing Authorization header');
     return res.status(401).json({ error: 'Access token required' });
   }
 
+  const parts = header.split(' ');
+  let token = header;
+  if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+    token = parts[1];
+  }
+
   try {
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
-    console.log('[auth] Decoded JWT:', decoded);
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    // Attach user info to request for downstream handlers
+    (req as any).user = decoded;
 
-    // Hardcoded admin shortcut
-    if (decoded.id === 999 && decoded.email === 'admin@cliniquejuriste.com') {
-      req.user = {
-        id: 999,
-        email: 'admin@cliniquejuriste.com',
-        role: 'admin',
-        isAdmin: true
-      };
-      return next();
+    // Validate user exists and is approved
+    try {
+      const result = await pool.query('SELECT id, email, is_admin, is_approved FROM users WHERE id = $1', [decoded.id]);
+      if (!result.rows.length) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      if (!result.rows[0].is_approved) {
+        return res.status(403).json({ error: 'User not approved' });
+      }
+    } catch (dbErr) {
+      console.error('[auth] DB check error:', dbErr);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-
-    // Normal DB lookup (for other users)
-    const userResult = await pool.query(
-      'SELECT id, email, is_admin, is_approved FROM users WHERE id = $1',
-      [decoded.id]
-    );
-    console.log('[auth] DB user result:', userResult.rows);
-
-    if (userResult.rows.length === 0 || !userResult.rows[0].is_approved) {
-      return res.status(401).json({ error: 'Invalid or inactive user' });
-    }
-
-    const user = userResult.rows[0];
-    req.user = {
-      id: user.id,
-      email: user.email,
-      role: user.is_admin ? 'admin' : 'user',
-      isAdmin: user.is_admin
-    };
 
     next();
-  } catch (error) {
-    console.log('[auth] JWT error:', error);
-    return res.status(403).json({ error: 'Invalid token' });
+  } catch (err: any) {
+    console.warn('[auth] JWT error:', err && err.name ? err.name : err);
+    if (err?.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired. Please log in again.' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
-export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (!req.user?.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  next();
+export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  if (user.isAdmin || user.is_admin) return next();
+  return res.status(403).json({ error: 'Admin privileges required' });
 };

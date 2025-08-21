@@ -111,6 +111,11 @@ const HomePage: React.FC = () => {
                       />
                     </div>
                   )}
+
+
+{articles.map((article) => (
+                <BlogCard key={article.id} blog={article} />
+              ))}
                   
                   <div className="p-6 flex-grow">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">

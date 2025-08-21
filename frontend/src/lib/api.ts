@@ -1,354 +1,395 @@
-// FIXED: Remove duplicate /api from base URL
+// Centralized API client for the frontend
+// - Attaches Authorization header from localStorage on every request
+// - Handles JSON vs FormData bodies
+// - Provides safe, masked logging for debugging
+// - Does NOT auto-clear auth on 401/403 (client code should handle re-login UI)
+// - Includes upload helper with progress using XHR
+
+type JsonObject = { [key: string]: any };
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-// API Client class
 class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    console.log(`🔌 API Client initialized for Azizkh07 at 2025-08-20 14:01:33 with base URL: ${baseUrl}`);
+    console.log(`🔌 API Client initialized for ${getCurrentUserTag()} with base URL: ${baseUrl}`);
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    // FIXED: Ensure endpoint starts with /api
-    const cleanEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
-    const url = `${this.baseUrl}${cleanEndpoint}`;
-    
-    console.log(`🔍 Making ${options.method || 'GET'} request for Azizkh07 to: ${url}`);
-    
-    // ✅ FIXED: Get token from 'authToken' instead of 'token'
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    
+  // Utility to normalize endpoint and build full URL
+  private buildUrl(endpoint: string) {
+    const clean = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+    return `${this.baseUrl}${clean}`;
+  }
+
+  // Convert HeadersInit to a plain object for merging/inspection
+  private headersInitToObject(headersInit?: HeadersInit): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (!headersInit) return headers;
+
+    if (headersInit instanceof Headers) {
+      headersInit.forEach((v, k) => (headers[k] = v));
+    } else if (Array.isArray(headersInit)) {
+      headersInit.forEach(([k, v]) => (headers[k] = v));
+    } else {
+      Object.assign(headers, headersInit);
+    }
+    return headers;
+  }
+
+  // Mask token for safe logging (don't print full token)
+  private maskToken(token: string) {
+    if (!token) return '';
+    if (token.length > 12) return `${token.slice(0, 6)}…${token.slice(-4)}`;
+    return '***';
+  }
+
+  // The single request entrypoint used by get/post/put/delete
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = this.buildUrl(endpoint);
+    console.log(`🔍 Making ${options.method || 'GET'} request for ${getCurrentUserTag()} to: ${url}`);
+
+    // Prepare headers (start empty, fill below)
+    const suppliedHeaders = this.headersInitToObject(options.headers);
+    const headers: Record<string, string> = {};
+
+    // If body is FormData we must not set Content-Type (browser will set with boundary)
+    const isFormData = options.body instanceof FormData;
+
+    // If not form data and Content-Type not explicitly provided, default to application/json
+    if (!isFormData && !('content-type' in Object.keys(suppliedHeaders).reduce((acc, k) => (acc[k.toLowerCase()] = suppliedHeaders[k], acc), {} as Record<string,string>))) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    // Merge supplied headers (preserve any explicit values)
+    Object.assign(headers, suppliedHeaders);
+
+    // Attach Authorization from localStorage *here* (ensures token is read at call time)
+    try {
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('authToken');
+        if (token && !headers['Authorization'] && !headers['authorization']) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        // Debug: mask token presence
+        if (headers['Authorization']) {
+          console.log('🔐 Request will include Authorization header (masked):', `Bearer ${this.maskToken(String(headers['Authorization']).replace(/^Bearer\s+/, ''))}`, '->', url);
+        } else {
+          console.log('⚠️ Request will NOT include Authorization header ->', url);
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not read auth token from localStorage', e);
+    }
+
+    // If FormData, ensure we don't send Content-Type header
+    if (isFormData) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
+
+    // Build final fetch config
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
       ...options,
+      headers,
     };
 
-    // Remove Content-Type if sending FormData
-    if (options.body instanceof FormData) {
-      delete (config.headers as any)['Content-Type'];
-    }
-
+    let response: Response;
     try {
-      const response = await fetch(url, config);
-      
-      // Log the response status
-      console.log(`📥 Response from ${url} for Azizkh07: ${response.status} ${response.statusText}`);
-      
-      // Handle authentication errors
+      response = await fetch(url, config);
+    } catch (networkErr) {
+      console.error(`❌ Network error while requesting ${url}:`, networkErr);
+      throw new Error('Network error - please check your connection');
+    }
+
+    // Log status
+    console.log(`📥 Response from ${url} for ${getCurrentUserTag()}: ${response.status} ${response.statusText}`);
+
+    // Read response text if needed (for error parsing)
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+
+    // Handle common auth errors without auto-clearing token (UI decides what to do)
+    if (response.status === 401 || response.status === 403) {
+      const text = await response.text();
+      let parsed: any = null;
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch (e) {
+        // not JSON
+      }
+      const serverMessage = parsed?.error || parsed?.message || text || response.statusText;
       if (response.status === 401) {
-        console.log('🔐 Unauthorized request for Azizkh07 - clearing auth data');
-        this.clearAuthData();
-        throw new Error('Authentication required. Please log in again.');
+        console.warn('🔐 Unauthorized response:', serverMessage);
+        throw new Error(serverMessage || 'Authentication required. Please log in again.');
+      } else {
+        console.warn('⛔ Forbidden response:', serverMessage);
+        throw new Error(serverMessage || 'Forbidden');
       }
-      
-      // Check for non-JSON responses first
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text();
-        console.error('❌ Non-JSON response received for Azizkh07:', textResponse.substring(0, 150) + '...');
-        throw new Error(`Expected JSON response but got: ${contentType || 'unknown'}`);
-      }
-      
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('❌ Error response for Azizkh07:', data);
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-      
-      console.log(`✅ Success response from ${endpoint} for Azizkh07:`, typeof data === 'object' ? Object.keys(data) : 'primitive data');
-      return data as T;
-    } catch (error) {
-      console.error(`❌ API request to ${endpoint} failed for Azizkh07:`, error);
-      throw error;
     }
-  }
 
-  private clearAuthData(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      console.log('🗑️ Auth data cleared for Azizkh07');
+    // If response is not OK, try to parse JSON error
+    if (!response.ok) {
+      const text = await response.text();
+      try {
+        const parsed = text ? JSON.parse(text) : null;
+        const message = parsed?.message || parsed?.error || text || `HTTP error ${response.status}`;
+        console.error('❌ Error response:', message);
+        throw new Error(message);
+      } catch (err) {
+        console.error('❌ Error response (non-JSON):', text);
+        throw new Error(text || `HTTP error ${response.status}`);
+      }
     }
+
+    // If caller expects JSON, parse and return
+    if (isJson) {
+      try {
+        const data = await response.json();
+        return data as T;
+      } catch (err) {
+        console.error('❌ Failed to parse JSON response from', url, err);
+        throw new Error('Invalid JSON response from server');
+      }
+    }
+
+    // For non-JSON (text, blobs etc.), return text
+    const textResponse = await response.text();
+    // @ts-ignore - return as any for flexibility
+    return textResponse as any as T;
   }
 
-  // GET request
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  // Public helpers
+
+  async get<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET', ...options });
   }
 
-  // POST request
-  async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  async post<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    const body = data instanceof FormData ? data : data !== undefined ? JSON.stringify(data) : undefined;
+    const headers = options?.headers || {};
+    // If sending JSON, ensure caller likely intends application/json; request() will ensure header if absent.
     const config: RequestInit = {
       method: 'POST',
-      body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
-      ...options
+      body,
+      ...options,
+      headers,
     };
-    
-    // Only set content-type to application/json if we're not sending FormData
-    if (!(data instanceof FormData)) {
-      config.headers = {
-        'Content-Type': 'application/json',
-        ...options?.headers
-      };
-    } else {
-      // For FormData, don't set Content-Type (let browser set it with boundary)
-      config.headers = {
-        ...options?.headers
-      };
-    }
-    
     return this.request<T>(endpoint, config);
   }
 
-  // PUT request
-  async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  async put<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    const body = data instanceof FormData ? data : data !== undefined ? JSON.stringify(data) : undefined;
+    const headers = options?.headers || {};
     const config: RequestInit = {
       method: 'PUT',
-      body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
-      ...options
+      body,
+      ...options,
+      headers,
     };
-    
-    // Only set content-type to application/json if we're not sending FormData
-    if (!(data instanceof FormData)) {
-      config.headers = {
-        'Content-Type': 'application/json',
-        ...options?.headers
-      };
-    } else {
-      config.headers = {
-        ...options?.headers
-      };
-    }
-    
     return this.request<T>(endpoint, config);
   }
 
-  // DELETE request
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    const body = data instanceof FormData ? data : data !== undefined ? JSON.stringify(data) : undefined;
+    const headers = options?.headers || {};
+    const config: RequestInit = {
+      method: 'DELETE',
+      body,
+      ...options,
+      headers,
+    };
+    return this.request<T>(endpoint, config);
   }
 
-  // ✅ FIXED: Upload file with progress support and proper auth token
-  async upload<T>(
-    endpoint: string, 
-    formData: FormData, 
-    onProgress?: (percentage: number) => void
+  // Upload helper with progress support (uses XHR so we can report progress reliably)
+  async upload<T = any>(
+    endpoint: string,
+    formData: FormData,
+    onProgress?: (percent: number) => void
   ): Promise<T> {
-    const cleanEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
-    const url = `${this.baseUrl}${cleanEndpoint}`;
-    // ✅ FIXED: Use 'authToken' instead of 'token'
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-    
-    console.log(`📤 Starting upload for Azizkh07 to: ${url} at 2025-08-20 14:01:33`);
+    const url = this.buildUrl(endpoint);
+    console.log(`📤 Starting upload for ${getCurrentUserTag()} to: ${url}`);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<T>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
 
-      // Progress tracking
-      if (onProgress) {
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percentage = Math.round((event.loaded / event.total) * 100);
-            console.log(`📊 Upload progress for Azizkh07: ${percentage}%`);
-            onProgress(percentage);
-          }
-        });
-      }
-
-      xhr.addEventListener('load', () => {
-        console.log(`📥 Upload response for Azizkh07: ${xhr.status} ${xhr.statusText}`);
-        
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            console.log('✅ Upload successful for Azizkh07:', response);
-            resolve(response);
-          } catch (error) {
-            console.log('✅ Upload successful for Azizkh07 (non-JSON response)');
-            resolve(xhr.responseText as unknown as T);
-          }
-        } else {
-          console.error(`❌ Upload failed for Azizkh07 with status: ${xhr.status}`);
-          
-          // Handle authentication errors
-          if (xhr.status === 401) {
-            this.clearAuthData();
-            reject(new Error('Authentication required. Please log in again.'));
+      // Attach Authorization header from localStorage
+      try {
+        if (typeof window !== 'undefined') {
+          const token = localStorage.getItem('authToken');
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            console.log('🔐 Auth header added to upload request for', getCurrentUserTag());
           } else {
-            // Try to parse error message
-            try {
-              const errorResponse = JSON.parse(xhr.responseText);
-              reject(new Error(errorResponse.message || `Upload failed with status: ${xhr.status}`));
-            } catch (e) {
-              reject(new Error(`Upload failed with status: ${xhr.status}`));
-            }
+            console.log('⚠️ No auth token found for upload request -', getCurrentUserTag());
           }
         }
-      });
-
-      xhr.addEventListener('error', () => {
-        console.error('❌ Upload network error for Azizkh07');
-        reject(new Error('Upload failed - network error'));
-      });
-
-      xhr.addEventListener('abort', () => {
-        console.error('❌ Upload aborted for Azizkh07');
-        reject(new Error('Upload aborted'));
-      });
-
-      xhr.open('POST', url);
-      
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        console.log('🔐 Auth header added to upload request for Azizkh07');
-      } else {
-        console.log('⚠️ No auth token found for upload request - Azizkh07');
+      } catch (e) {
+        console.warn('⚠️ Error reading auth token for upload', e);
       }
 
-      console.log('📤 Sending upload request for Azizkh07...');
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable && onProgress) {
+          const percent = Math.round((ev.loaded / ev.total) * 100);
+          onProgress(percent);
+          console.log(`📊 Upload progress for ${getCurrentUserTag()}: ${percent}%`);
+        }
+      };
+
+      xhr.onload = () => {
+        console.log(`📥 Upload response for ${getCurrentUserTag()}: ${xhr.status} ${xhr.statusText}`);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            resolve(parsed as T);
+          } catch (err) {
+            // Non-JSON but successful
+            // @ts-ignore
+            resolve(xhr.responseText as T);
+          }
+        } else {
+          let message = `Upload failed with status ${xhr.status}`;
+          try {
+            const parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+            message = parsed?.message || parsed?.error || message;
+          } catch (_) {}
+          console.error(`❌ Upload failed for ${getCurrentUserTag()}:`, message);
+          reject(new Error(message));
+        }
+      };
+
+      xhr.onerror = () => {
+        console.error('❌ Upload network error for', getCurrentUserTag());
+        reject(new Error('Upload failed - network error'));
+      };
+
       xhr.send(formData);
     });
   }
+
+  // Clears auth from localStorage (call UI-level explicit sign out)
+  clearAuthData() {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      console.log(`🗑️ Auth data cleared for ${getCurrentUserTag()}`);
+    }
+  }
 }
 
-// Export API client instance
-export const api = new ApiClient(API_BASE_URL);
+// Helper to identify developer/user in logs (non-sensitive)
+function getCurrentUserTag() {
+  try {
+    if (typeof window === 'undefined') return 'client';
+    const u = localStorage.getItem('user');
+    if (!u) return 'guest';
+    const parsed = JSON.parse(u);
+    return parsed?.email || parsed?.name || 'user';
+  } catch {
+    return 'user';
+  }
+}
 
-// Export as default for backward compatibility
+/* ---------------------------------------------------------
+   API utilities exposed for application use
+   - apiUtils.getAuthToken() etc.
+   - handleApiResponse for consistent response extraction
+----------------------------------------------------------*/
+
+export const api = new ApiClient(API_BASE_URL);
 export default api;
 
-// ✅ FIXED: Utility functions updated to use 'authToken' consistently
 export const apiUtils = {
-  // Set auth token
   setAuthToken: (token: string) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token); // ✅ FIXED: Use 'authToken'
-      console.log('🔑 Auth token stored in localStorage for Azizkh07 at 2025-08-20 14:01:33');
+      localStorage.setItem('authToken', token);
+      console.log('🔑 Auth token stored in localStorage');
     }
   },
 
-  // Remove auth token
   removeAuthToken: () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken'); // ✅ FIXED: Use 'authToken'
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      console.log('🗑️ Auth token removed from localStorage for Azizkh07 at 2025-08-20 14:01:33');
+      console.log('🗑️ Auth token removed from localStorage');
     }
   },
 
-  // Get auth token
   getAuthToken: (): string | null => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken'); // ✅ FIXED: Use 'authToken'
+      return localStorage.getItem('authToken');
     }
     return null;
   },
 
-  // Check if user is authenticated
-  isAuthenticated: (): boolean => {
-    const token = apiUtils.getAuthToken();
-    const hasToken = !!token;
-    console.log(`🔍 Authentication check for Azizkh07: ${hasToken ? 'authenticated' : 'not authenticated'}`);
-    return hasToken;
-  },
-
-  // Store user data
   setUserData: (user: any) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user));
-      console.log('👤 User data stored for Azizkh07:', user.email || user.name || 'unknown user');
+      console.log('👤 User data stored:', user?.email || user?.name || 'unknown');
     }
   },
 
-  // Get user data
-  getUserData: () => {
+  getUserData: (): any | null => {
     if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        try {
-          const parsed = JSON.parse(userData);
-          console.log('👤 User data retrieved for Azizkh07:', parsed.email || parsed.name || 'unknown user');
-          return parsed;
-        } catch (e) {
-          console.error('❌ Error parsing user data from localStorage for Azizkh07:', e);
-        }
+      const raw = localStorage.getItem('user');
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error('❌ Error parsing user data from localStorage', e);
+        return null;
       }
     }
     return null;
   },
 
-  // ✅ ADDED: Check if user is admin
-  isAdmin: (): boolean => {
-    const user = apiUtils.getUserData();
-    return user?.is_admin === true || user?.isAdmin === true;
+  isAuthenticated: (): boolean => {
+    const token = apiUtils.getAuthToken();
+    const ok = !!token;
+    console.log(`🔍 Authentication check: ${ok ? 'authenticated' : 'not authenticated'}`);
+    return ok;
   },
 
-  // ✅ ADDED: Get user role
+  isAdmin: (): boolean => {
+    const u = apiUtils.getUserData();
+    return !!(u && (u.is_admin === true || u.isAdmin === true));
+  },
+
   getUserRole: (): string => {
-    const user = apiUtils.getUserData();
-    if (user?.is_admin || user?.isAdmin) return 'admin';
-    return user?.role || 'user';
+    const u = apiUtils.getUserData();
+    if (!u) return 'guest';
+    if (u.is_admin || u.isAdmin) return 'admin';
+    return u.role || 'user';
   }
 };
 
-// Fixed: Handle API Response with proper typing and assertion
+// Extract data from API responses consistently
 export const handleApiResponse = <T = any>(response: any): T => {
-  // If response is already in the expected format (not wrapped in API response)
-  if (!response.success && !response.data) {
+  // If API returns { success: true, data: ... } use data
+  if (response && typeof response === 'object') {
+    if ('data' in response) return response.data as T;
+    if ('success' in response && response.success && 'result' in response) return response.result as T;
     return response as T;
   }
-  
-  // If response follows API response format
-  if (response.success && response.data !== undefined) {
-    return response.data as T;
-  }
-  
-  throw new Error(response.message || 'API request failed');
+  return response as T;
 };
 
-// Get Error Message from any error type
 export const getErrorMessage = (error: any): string => {
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  if (error instanceof Error) {
-    return error.message;
-  }
-  
-  if (error?.response?.data?.message) {
-    return error.response.data.message;
-  }
-  
-  if (error?.message) {
-    return error.message;
-  }
-  
-  if (error?.errors && Array.isArray(error.errors) && error.errors.length > 0) {
-    return error.errors[0].msg || error.errors[0].message || 'Validation error';
-  }
-  
-  return 'An unexpected error occurred';
+  if (!error) return 'Unknown error';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (error?.response?.data?.message) return error.response.data.message;
+  if (error?.message) return error.message;
+  if (error?.error) return error.error;
+  return JSON.stringify(error).slice(0, 200);
 };
 
-// Format error for display
 export const formatError = (error: any): { message: string; details?: string } => {
-  const message = getErrorMessage(error);
-  
   return {
-    message,
-    details: error?.details || error?.stack || undefined
+    message: getErrorMessage(error),
+    details: error?.stack || error?.details || undefined,
   };
 };
-
-console.log('🌐 API client loaded for Azizkh07 at 2025-08-20 14:01:33');
