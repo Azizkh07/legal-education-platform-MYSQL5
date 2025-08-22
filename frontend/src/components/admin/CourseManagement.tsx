@@ -477,47 +477,7 @@ const CourseManagement: React.FC = () => {
       )}
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📚</span>
-            </div>
-            <div>
-              <p className="text-blue-900 font-semibold">Total Courses</p>
-              <p className="text-2xl font-bold text-blue-600">{courses.length}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📖</span>
-            </div>
-            <div>
-              <p className="text-purple-900 font-semibold">Total Subjects</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {courses.reduce((sum, course) => sum + (course.subject_count || 0), 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🎥</span>
-            </div>
-            <div>
-              <p className="text-green-900 font-semibold">Total Videos</p>
-              <p className="text-2xl font-bold text-green-600">
-                {courses.reduce((sum, course) => sum + (course.video_count || 0), 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+   
 
       {/* Course Form Modal */}
       <CourseForm
@@ -544,34 +504,7 @@ const CourseManagement: React.FC = () => {
         />
       )}
 
-      {/* Status */}
-      <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-        <h4 className="font-semibold text-green-900 mb-3">✅ CLEAN IMPLEMENTATION - Azizkh07</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h5 className="font-medium text-green-800 mb-2">🎯 Real Database Operations:</h5>
-            <ul className="text-green-700 space-y-1">
-              <li>✅ No mock data anywhere</li>
-              <li>✅ Direct database CRUD operations</li>
-              <li>✅ Real-time data synchronization</li>
-              <li>✅ Proper error handling</li>
-              <li>✅ Transaction support for deletes</li>
-            </ul>
-          </div>
-          <div>
-            <h5 className="font-medium text-green-800 mb-2">📊 Current Real Data:</h5>
-            <ul className="text-green-700 space-y-1">
-              <li>📚 {courses.length} courses in database</li>
-              <li>📖 {courses.reduce((sum, course) => sum + (course.subject_count || 0), 0)} subjects in database</li>
-              <li>🎥 {courses.reduce((sum, course) => sum + (course.video_count || 0), 0)} videos in database</li>
-              <li>🔧 All operations go to PostgreSQL</li>
-            </ul>
-          </div>
-        </div>
-        <p className="text-xs text-green-600 mt-3">
-          Session: Azizkh07 | 2025-08-20 12:57:15 | Clean database-only implementation
-        </p>
-      </div>
+   
     </div>
   );
 };

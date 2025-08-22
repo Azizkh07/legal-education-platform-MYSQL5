@@ -197,8 +197,7 @@ const AdminDashboard: React.FC = () => {
               { id: 'courses', label: 'Cours & Matières', icon: '📚' },
               { id: 'videos', label: 'Vidéos', icon: '🎥' },
               { id: 'blog', label: 'Blog', icon: '📝' },
-              { id: 'users', label: 'Utilisateurs', icon: '👥' },
-              { id: 'settings', label: 'Paramètres', icon: '⚙️' }
+              { id: 'users', label: 'Utilisateurs', icon: '👥' }
             ].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`px-4 py-3 rounded-xl ${activeTab === tab.id ? 'bg-blue-600 text-white' : 'text-gray-600'}`}>{tab.icon} <span className="ml-2">{tab.label}</span></button>
             ))}
@@ -226,9 +225,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'settings' && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg border">Paramètres...</div>
-        )}
+     
       </div>
     </div>
   );

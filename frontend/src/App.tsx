@@ -16,6 +16,7 @@ import CourseDetailPage from './pages/CourseDetailPage';
 import ContactPage from './pages/ContactPage';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import DraftsPage from './pages/DraftPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -117,7 +118,10 @@ function App() {
           <Route path="/courses/:courseId" element={<CourseDetailPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
+          <Route path="/blog/drafts" element={<DraftsPage />} />   {/* <-- ADD THIS */}
+
           <Route path="/contact" element={<ContactPage />} />
+
 
           
           
