@@ -5,6 +5,7 @@ import { videoService, Video } from '../lib/videoService';
 import VideoPreview from '../components/VideoPreview';
 import ProfessionalVideoPlayer from '../components/ProfessionalVideoPlayer';
 import { useAuth } from '../lib/AuthContext';
+
 interface Course {
   id: number;
   title: string;
@@ -226,7 +227,7 @@ const CoursesPage: React.FC = () => {
                                       className={`w-full mt-3 ${isCourseEnrolled ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-200 text-gray-700 cursor-not-allowed'} py-2 px-4 rounded-lg text-sm font-medium transition-colors`}
                                       disabled={!isCourseEnrolled}
                                     >
-                                      {isCourseEnrolled ? '▶️ Regarder' : '🔒 Inscription requise'}
+                                      {isCourseEnrolled ? '▶️ Regarder' : '🔒 Login requise'}
                                     </button>
                                   </div>
                                 </div>
