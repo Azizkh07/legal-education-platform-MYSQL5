@@ -46,7 +46,7 @@ const Header: React.FC = () => {
             alt="Clinique Juriste Logo"
             className="logo-image"
           />
-          <span className="logo-text">Clinique Juriste</span>
+          <span className="logo-text">Clinique des Juristes</span>
         </Link>
 
         {/* Desktop Navigation */}

@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, getErrorMessage } from '../lib/api';
 import { videoService, Video } from '../lib/videoService';
 import VideoPreview from '../components/VideoPreview';
 import ProfessionalVideoPlayer from '../components/ProfessionalVideoPlayer';
 import { useAuth } from '../lib/AuthContext';
+import '../styles/CoursesPage.css';
+import Header from '../components/Header';
 
 interface Course {
   id: number;
@@ -30,6 +32,7 @@ interface CourseWithData extends Course {
   totalVideos: number;
   totalHours: number;
   professors: string[];
+  firstVideo?: Video;
 }
 
 const CoursesPage: React.FC = () => {
@@ -40,12 +43,18 @@ const CoursesPage: React.FC = () => {
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<number>>(new Set());
+  const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
+  const [hoveredVideo, setHoveredVideo] = useState<Video | null>(null);
+  const [previewTimeouts, setPreviewTimeouts] = useState<Map<number, NodeJS.Timeout>>(new Map());
+  const [isVisible, setIsVisible] = useState(false);
 
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadCoursesData();
+    // Trigger animations
+    setTimeout(() => setIsVisible(true), 300);
   }, []);
 
   useEffect(() => {
@@ -55,6 +64,13 @@ const CoursesPage: React.FC = () => {
       setEnrolledCourseIds(new Set());
     }
   }, [isAuthenticated]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      previewTimeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [previewTimeouts]);
 
   const fetchMyEnrollments = async () => {
     try {
@@ -96,13 +112,17 @@ const CoursesPage: React.FC = () => {
           const professorsSet: { [key: string]: boolean } = {};
           subjectsWithVideos.forEach(s => { professorsSet[s.professor_name] = true; });
           const professors = Object.keys(professorsSet);
+          
+          // Get first video for preview
+          const firstVideo = subjectsWithVideos.find(s => s.videos.length > 0)?.videos[0];
 
           return {
             ...course,
             subjects: subjectsWithVideos,
             totalVideos,
             totalHours,
-            professors
+            professors,
+            firstVideo
           };
         })
         .filter(course => course.totalVideos > 0);
@@ -117,12 +137,16 @@ const CoursesPage: React.FC = () => {
   };
 
   const handleVideoClick = (video: Video) => {
-    // video.course_id may be undefined; guard it
     const courseId = typeof video.course_id === 'number' ? video.course_id : undefined;
     const isEnrolled = typeof courseId === 'number' ? enrolledCourseIds.has(courseId) : false;
 
     if (!isAuthenticated) {
-      navigate('/login', { state: { returnTo: `/courses?video=${video.id}`, message: 'Connectez-vous pour regarder la vidéo complète' }});
+      navigate('/login', { 
+        state: { 
+          returnTo: `/courses?video=${video.id}`, 
+          message: 'Connectez-vous pour regarder la vidéo complète' 
+        }
+      });
       return;
     }
 
@@ -134,6 +158,40 @@ const CoursesPage: React.FC = () => {
     setSelectedVideo(video);
     setShowVideoPlayer(true);
   };
+
+  const handleVideoHover = (video: Video, isHovering: boolean) => {
+    const courseId = typeof video.course_id === 'number' ? video.course_id : undefined;
+    const isEnrolled = typeof courseId === 'number' ? enrolledCourseIds.has(courseId) : false;
+
+    if (!isAuthenticated || !isEnrolled) {
+      return;
+    }
+
+    if (isHovering) {
+      // Clear any existing timeout for this video
+      const existingTimeout = previewTimeouts.get(video.id);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      // Set a delay before showing preview to avoid flickering
+      const timeout = setTimeout(() => {
+        setHoveredVideo(video);
+      }, 500);
+
+      setPreviewTimeouts(new Map(previewTimeouts.set(video.id, timeout)));
+    } else {
+      // Clear timeout and hide preview
+      const existingTimeout = previewTimeouts.get(video.id);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        previewTimeouts.delete(video.id);
+        setPreviewTimeouts(new Map(previewTimeouts));
+      }
+      setHoveredVideo(null);
+    }
+  };
+
   const closeVideoPlayer = () => {
     setShowVideoPlayer(false);
     setSelectedVideo(null);
@@ -152,91 +210,244 @@ const CoursesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 text-lg">🔄 Chargement des cours...</p>
+      <div className="courses-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Chargement des cours...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="courses-page">
+        <div className="courses-container">
+          <div className="empty-state">
+            <div className="empty-icon">⚠️</div>
+            <h2 className="empty-title">Erreur de chargement</h2>
+            <p className="empty-message">{error}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header / hero etc (same as your existing UI) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="courses-page">
+          <Header />
+
+      <div className="courses-container">
+        {/* Page Header */}
+        <div className="courses-header">
+          <h1 className="courses-title">Nos Cours</h1>
+          <p className="courses-subtitle">
+            Choisissez parmi {courses.length} cours pour faire progresser votre carrière
+          </p>
+
+          {/* Category Filter */}
+          {categories.length > 1 && (
+            <div className="category-filter">
+              {categories.map(category => (
+                <button
+                  key={category}
+                  className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category === 'all' ? 'Tous les cours' : category}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Courses Grid */}
         {filteredCourses.length === 0 ? (
-          <div className="text-center py-16">...</div>
+          <div className="empty-state">
+            <div className="empty-icon">📚</div>
+            <h2 className="empty-title">Aucun cours disponible</h2>
+            <p className="empty-message">
+              {selectedCategory === 'all' 
+                ? 'Nos cours arrivent bientôt. Revenez plus tard pour découvrir notre contenu.'
+                : `Aucun cours disponible dans la catégorie "${selectedCategory}".`
+              }
+            </p>
+          </div>
         ) : (
-          <div className="space-y-12">
-            {filteredCourses.map(course => {
+          <div className="courses-grid">
+            {filteredCourses.map((course, index) => {
               const isCourseEnrolled = enrolledCourseIds.has(course.id);
+              const isExpanded = expandedCourse === course.id;
+              const isHoveringThisVideo = hoveredVideo?.id === course.firstVideo?.id;
+              
               return (
-                <div key={course.id} className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                  {/* ... header/content preserved */}
-                  <div className="p-8">
-                    <div className="space-y-8">
-                      {course.subjects.map((subject, subjectIndex) => (
-                        <div key={subject.id}>
-                          {/* subject header */}
-                          {subject.videos.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                              {subject.videos.map((video, videoIndex) => (
-                                <div key={video.id} className="group bg-gray-50 rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300">
-                                  <div className="aspect-video">
-                                    <VideoPreview
-                                      video={video}
-                                      maxDuration={10}
-                                      showPlayButton={true}
-                                      className="w-full h-full"
-                                      onPreviewClick={() => {
-                                        // allow preview even if not enrolled (10s preview)
-                                        if (!isAuthenticated) {
-                                          navigate('/login', { state: { returnTo: `/courses?video=${video.id}` }});
-                                          return;
+                <div 
+                  key={course.id} 
+                  className={`udemy-course-card ${isVisible ? 'animate-in' : ''}`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  {/* Course Image with Enhanced Preview */}
+                  <div 
+                    className="course-image-container"
+                    onMouseEnter={() => course.firstVideo && handleVideoHover(course.firstVideo, true)}
+                    onMouseLeave={() => course.firstVideo && handleVideoHover(course.firstVideo, false)}
+                  >
+                    {course.firstVideo && isHoveringThisVideo && isCourseEnrolled && isAuthenticated ? (
+                      // Show video preview on hover
+                      <VideoPreview
+                        video={course.firstVideo}
+                        maxDuration={15}
+                        showPlayButton={false}
+                        className="course-image"
+                        onPreviewClick={() => handleVideoClick(course.firstVideo!)}
+                      />
+                    ) : course.firstVideo ? (
+                      // Show thumbnail
+                      <VideoPreview
+                        video={course.firstVideo}
+                        maxDuration={0} // Don't auto-play on load
+                        showPlayButton={false}
+                        className="course-image"
+                        onPreviewClick={() => {
+                          if (!isAuthenticated) {
+                            navigate('/login', { 
+                              state: { 
+                                returnTo: `/courses?video=${course.firstVideo?.id}` 
+                              }
+                            });
+                            return;
+                          }
+                          if (!isCourseEnrolled) {
+                            alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                            return;
+                          }
+                          if (course.firstVideo) {
+                            handleVideoClick(course.firstVideo);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="course-image" style={{
+                        background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '28px'
+                      }}>
+                        📚
+                      </div>
+                    )}
+                    
+                    <div className="course-preview-overlay">
+                      <button 
+                        className="preview-play-btn"
+                        onClick={() => {
+                          if (!course.firstVideo) return;
+                          
+                          if (!isAuthenticated) {
+                            navigate('/login', { 
+                              state: { 
+                                returnTo: `/courses?video=${course.firstVideo.id}` 
+                              }
+                            });
+                            return;
+                          }
+                          if (!isCourseEnrolled) {
+                            alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                            return;
+                          }
+                          handleVideoClick(course.firstVideo);
+                        }}
+                      >
+                        {isCourseEnrolled && isAuthenticated ? '▶' : '🔒'}
+                      </button>
+                    </div>
+
+                    
+                  </div>
+
+                  {/* Course Content */}
+                  <div className="udemy-course-content">
+                    <h3 className="udemy-course-title">{course.title}</h3>
+                    
+                    <div className="udemy-course-instructor">
+                      {course.professors.length > 0 ? course.professors.join(', ') : 'Instructeur'}
+                    </div>
+
+                 
+
+                    <div className="udemy-course-meta">
+                      <span>{course.totalHours} heures au total</span>
+                      <span>•</span>
+                      <span>{course.totalVideos} cours</span>
+                      <span>•</span>
+                      <span>Tous niveaux</span>
+                    </div>
+
+                    <div className="udemy-course-meta">
+                      <span className={`enrollment-badge ${isCourseEnrolled ? 'enrolled' : 'locked'}`}>
+                        {isCourseEnrolled ? 'Inscrit ✓' : 'Connexion requise 🔒'}
+                      </span>
+                    </div>
+
+                    <div className="video-stats">
+                      <span className="video-count">{course.totalVideos} vidéos</span>
+                      <button 
+                        className="watch-button"
+                        disabled={!isCourseEnrolled}
+                        onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                      >
+                        {isExpanded ? 'Masquer' : 'Voir contenu'}
+                      </button>
+                    </div>
+
+                    {/* Expandable Subject/Video List */}
+                    {isExpanded && (
+                      <div className="subject-dropdown">
+                        {course.subjects.map((subject) => (
+                          <div key={subject.id}>
+                            <div className="subject-header-btn">
+                              <span>{subject.title} ({subject.videos.length} vidéos)</span>
+                              <span>{subject.hours}h</span>
+                            </div>
+                            <div className="subject-content">
+                              {subject.videos.map((video) => (
+                                <div 
+                                  key={video.id}
+                                  className={`video-item ${!isCourseEnrolled ? 'locked' : ''}`}
+                                  onClick={() => {
+                                    if (!isAuthenticated) {
+                                      navigate('/login', { 
+                                        state: { 
+                                          returnTo: `/courses?video=${video.id}` 
                                         }
-                                        if (!isCourseEnrolled) {
-                                          alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
-                                          return;
-                                        }
-                                        handleVideoClick(video);
-                                      }}
-                                    />
+                                      });
+                                      return;
+                                    }
+                                    if (!isCourseEnrolled) {
+                                      alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                                      return;
+                                    }
+                                    handleVideoClick(video);
+                                  }}
+                                  onMouseEnter={() => handleVideoHover(video, true)}
+                                  onMouseLeave={() => handleVideoHover(video, false)}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                    <span className="play-icon-small">
+                                      {isCourseEnrolled ? '▶' : '🔒'}
+                                    </span>
+                                    <span className="video-title-small">{video.title}</span>
                                   </div>
-
-                                  <div className="p-4">
-                                    <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">{video.title}</h4>
-
-                                    <div className="flex items-center justify-between text-xs text-gray-500">
-                                      <span>{video.duration ? videoService.formatDuration(video.duration) : '0:00'}</span>
-                                      <span>{video.file_size ? videoService.formatFileSize(video.file_size) : 'N/A'}</span>
-                                    </div>
-
-                                    <button
-                                      onClick={() => {
-                                        if (!isAuthenticated) {
-                                          navigate('/login', { state: { returnTo: `/courses?video=${video.id}` }});
-                                          return;
-                                        }
-                                        if (!isCourseEnrolled) {
-                                          alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
-                                          return;
-                                        }
-                                        handleVideoClick(video);
-                                      }}
-                                      className={`w-full mt-3 ${isCourseEnrolled ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-200 text-gray-700 cursor-not-allowed'} py-2 px-4 rounded-lg text-sm font-medium transition-colors`}
-                                      disabled={!isCourseEnrolled}
-                                    >
-                                      {isCourseEnrolled ? '▶️ Regarder' : '🔒 Login requise'}
-                                    </button>
-                                  </div>
+                                  
                                 </div>
                               ))}
                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -247,9 +458,18 @@ const CoursesPage: React.FC = () => {
 
       {/* Video Player Modal */}
       {showVideoPlayer && selectedVideo && (
-        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-          <div className="w-full h-full">
-            <ProfessionalVideoPlayer video={selectedVideo} isAuthenticated={isAuthenticated} onClose={closeVideoPlayer} className="w-full h-full" autoPlay={true} />
+        <div className="video-player-modal">
+          <button className="close-video-btn" onClick={closeVideoPlayer}>
+            ×
+          </button>
+          <div className="video-player-container">
+            <ProfessionalVideoPlayer 
+              video={selectedVideo} 
+              isAuthenticated={isAuthenticated} 
+              onClose={closeVideoPlayer} 
+              className="w-full h-full" 
+              autoPlay={true} 
+            />
           </div>
         </div>
       )}

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import '../styles/LoginPage.css';
 
 interface LoginCredentials {
   email: string;
@@ -16,10 +17,28 @@ const LoginPage: React.FC = () => {
   const [credentials, setCredentials] = useState<LoginCredentials>({ email: '', password: '' });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   // Parse redirect URL from query parameters
   const searchParams = new URLSearchParams(location.search);
   const redirectPath = searchParams.get('redirect') || '/';
+
+  useEffect(() => {
+    // Trigger animations
+    setTimeout(() => setIsVisible(true), 300);
+
+    // Mouse tracking for parallax effects
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: (e.clientY / window.innerHeight) * 2 - 1
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
@@ -55,75 +74,152 @@ const LoginPage: React.FC = () => {
   const displayError = error || authError;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="login-page-container">
       <Header />
 
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">Log In</h1>
+      {/* Login Section */}
+      <section className="login-section">
+        <div className="login-grid" />
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            {displayError && (
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                <p>{displayError}</p>
+        <div className="particles-container">
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={i}
+              className={`particle particle-${i % 4}`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${4 + Math.random() * 3}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="login-bg-shapes">
+          <div
+            className="bg-shape shape-1"
+            style={{
+              transform: `translate(${mousePosition.x * 15}px, ${mousePosition.y * 15}px) rotate(${mousePosition.x * 3}deg)`
+            }}
+          />
+          <div
+            className="bg-shape shape-2"
+            style={{
+              transform: `translate(${mousePosition.x * -10}px, ${mousePosition.y * -10}px) rotate(${mousePosition.y * -2}deg)`
+            }}
+          />
+          <div
+            className="bg-shape shape-3"
+            style={{
+              transform: `translate(${mousePosition.x * 8}px, ${mousePosition.y * 18}px)`
+            }}
+          />
+        </div>
+
+        <div className="login-content">
+          <div className="container">
+            {/* Centered Form Layout */}
+            <div className="login-centered-layout">
+              <div className={`login-form-container ${isVisible ? 'animate-in' : ''}`}>
+                <div className="login-form-wrapper">
+                  <div className="login-header">
+                 
+
+                    <h1 className="login-title">
+                      <span className="title-line">Bienvenue</span>
+                      <span className="title-highlight">de retour</span>
+                    </h1>
+
+                    <p className="login-description">
+                      Connectez-vous à votre compte pour accéder à vos cours et ressources juridiques
+                    </p>
+                  </div>
+                 
+
+                  <div className="login-form-card">
+                    {displayError && (
+                      <div className="error-alert">
+                        <p>{displayError}</p>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} noValidate className="login-form">
+                      <div className="form-group">
+                        <label htmlFor="email" className="form-label">
+                          Adresse Email
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={credentials.email}
+                          onChange={handleChange}
+                          required
+                          className="form-input"
+                          placeholder="votre.email@exemple.com"
+                          disabled={loading || authLoading}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="password" className="form-label">
+                          Mot de passe
+                        </label>
+                        <input
+                          type="password"
+                          id="password"
+                          name="password"
+                          value={credentials.password}
+                          onChange={handleChange}
+                          required
+                          className="form-input"
+                          placeholder="••••••••"
+                          disabled={loading || authLoading}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading || authLoading}
+                        className={`login-btn ${loading || authLoading ? 'loading' : ''}`}
+                      >
+                        <span className="btn-bg" />
+                        <span className="btn-text">
+                          {loading || authLoading ? (
+                            <>
+                              <div className="loading-spinner" />
+                              Connexion...
+                            </>
+                          ) : (
+                            'Se connecter'
+                          )}
+                        </span>
+                        <div className="btn-shine" />
+                      </button>
+                    </form>
+
+                    <div className="login-footer">
+                      <div className="divider">
+                        <span className="divider-text">Nouveau ici ?</span>
+                      </div>
+                      
+                      <p className="signup-text">
+                        Vous n'avez pas encore de compte ?{' '}
+                        <Link to="/contact" className="signup-link">
+                          <span>Contactez-nous</span>
+                          <div className="link-underline" />
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-
-            <form onSubmit={handleSubmit} noValidate>
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-gray-700 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={credentials.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your email"
-                  disabled={loading || authLoading}
-                />
-              </div>
-
-              <div className="mb-6">
-                <label htmlFor="password" className="block text-gray-700 mb-2">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={credentials.password}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your password"
-                  disabled={loading || authLoading}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || authLoading}
-                className={`w-full py-3 px-4 rounded-md text-white font-semibold transition ${
-                  loading || authLoading ? 'bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'
-                }`}
-              >
-                {loading || authLoading ? 'Logging in...' : 'Log In'}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/contact" className="text-blue-600 hover:underline">
-                  Contact us
-                </Link>
-              </p>
             </div>
           </div>
         </div>
-      </main>
+        
+      </section>
 
-      <Footer />
     </div>
   );
 };

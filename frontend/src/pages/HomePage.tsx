@@ -412,9 +412,12 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      <Footer />
     </div>
+
   );
+
+
 };
+
 
 export default HomePage;

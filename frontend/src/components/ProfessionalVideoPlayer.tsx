@@ -358,7 +358,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             <p className="text-white text-sm mt-2">Chargement...</p>
           </div>
         </div>
@@ -369,7 +369,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
           <button
             onClick={togglePlayPause}
-            className="bg-red-600 hover:bg-red-700 text-white rounded-full p-6 transition-all duration-200 transform hover:scale-110 shadow-lg"
+            className="bg-green-600 hover:bg-green-700 text-white rounded-full p-6 transition-all duration-200 transform hover:scale-110 shadow-lg"
           >
             <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
@@ -391,21 +391,10 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
       )}
 
       {/* User Badge */}
-      <div className="absolute top-4 right-4 bg-blue-600 bg-opacity-95 text-white px-3 py-1 rounded text-sm font-medium shadow-lg">
-        👤 Azizkh07
-      </div>
+   
 
       {/* Close Button */}
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-16 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full p-2 transition-colors"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      )}
+   
 
       {/* Custom Controls */}
       <div 
@@ -423,7 +412,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
           >
             {/* Progress */}
             <div 
-              className="h-full bg-red-600 rounded transition-all duration-100"
+              className="h-full bg-green-600 rounded transition-all duration-100"
               style={{ 
                 width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                 maxWidth: !isAuthenticated ? '8.33%' : '100%'
@@ -433,14 +422,14 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
             {/* Preview limit indicator */}
             {!isAuthenticated && duration > 0 && (
               <div 
-                className="absolute top-0 h-full w-1 bg-orange-500 rounded"
+                className="absolute top-0 h-full w-1 bg-green-500 rounded"
                 style={{ left: `${Math.min((10 / duration) * 100, 100)}%` }}
               />
             )}
             
             {/* Scrubber */}
             <div 
-              className="absolute top-1/2 w-4 h-4 bg-red-600 rounded-full transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+              className="absolute top-1/2 w-4 h-4 bg-green-600 rounded-full transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
               style={{ 
                 left: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
                 marginLeft: '-8px'
@@ -455,7 +444,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
             {/* Play/Pause */}
             <button
               onClick={togglePlayPause}
-              className="text-white hover:text-red-400 transition-colors duration-200"
+              className="text-white hover:text-green-400 transition-colors duration-200"
             >
               {isPlaying ? (
                 <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
@@ -476,7 +465,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
             >
               <button
                 onClick={toggleMute}
-                className="text-white hover:text-red-400 transition-colors duration-200"
+                className="text-white hover:text-green-400 transition-colors duration-200"
               >
                 {isMuted || volume === 0 ? (
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -519,7 +508,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
             <div className="relative">
               <button
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                className="text-white hover:text-red-400 transition-colors duration-200 text-sm font-medium px-2 py-1 rounded hover:bg-black hover:bg-opacity-30"
+                className="text-white hover:text-green-400 transition-colors duration-200 text-sm font-medium px-2 py-1 rounded hover:bg-black hover:bg-opacity-30"
               >
                 {playbackRate}x
               </button>
@@ -531,8 +520,8 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
                     <button
                       key={rate}
                       onClick={() => changePlaybackRate(rate)}
-                      className={`block w-full text-left px-2 py-1 text-sm hover:bg-red-600 rounded transition-colors ${
-                        playbackRate === rate ? 'text-red-400 bg-red-600 bg-opacity-30' : 'text-white'
+                      className={`block w-full text-left px-2 py-1 text-sm hover:bg-green-600 rounded transition-colors ${
+                        playbackRate === rate ? 'text-green-400 bg-green-600 bg-opacity-30' : 'text-white'
                       }`}
                     >
                       {rate}x {rate === 1 && '(Normal)'}
@@ -545,7 +534,7 @@ const ProfessionalVideoPlayer: React.FC<ProfessionalVideoPlayerProps> = ({
             {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
-              className="text-white hover:text-red-400 transition-colors duration-200"
+              className="text-white hover:text-green-400 transition-colors duration-200"
             >
               {isFullscreen ? (
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
