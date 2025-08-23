@@ -240,8 +240,7 @@ const CourseManagement: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">📚 Course & Subject Management</h2>
-            <p className="text-sm text-gray-600">✅ Connected to REAL DATABASE - No mock data</p>
-            <p className="text-xs text-gray-500">User: Azizkh07 | 2025-08-20 12:57:15 | Database Only</p>
+         
             {error && (
               <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
                 <p className="text-xs text-red-600">⚠️ {error}</p>
@@ -259,24 +258,7 @@ const CourseManagement: React.FC = () => {
             >
               📚 Courses ({courses.length})
             </button>
-            <button
-              onClick={() => setActiveView('subjects')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeView === 'subjects'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              disabled={!selectedCourse}
-            >
-              📖 Subjects ({subjects.length})
-            </button>
-            <button
-              onClick={loadRealCourses}
-              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              title="Refresh from database"
-            >
-              🔄
-            </button>
+           
           </div>
         </div>
       </div>
@@ -287,9 +269,7 @@ const CourseManagement: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold text-gray-900">📚 Courses List</h3>
-              <p className="text-xs text-green-600">
-                ✅ Real database data - {courses.length} courses found
-              </p>
+             
             </div>
             <button
               onClick={handleCreateCourse}

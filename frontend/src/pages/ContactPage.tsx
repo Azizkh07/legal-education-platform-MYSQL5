@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { ContactForm } from '../types';
 import { api, handleApiResponse, getErrorMessage } from '../lib/api';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import '../styles/ContactPage.css';
 
 const ContactPage: React.FC = () => {
   const [form, setForm] = useState<ContactForm>({
@@ -35,155 +38,161 @@ const ContactPage: React.FC = () => {
     setError('');
   };
 
+  // Success page with same theme as HomePage
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-green animate-gradient flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full text-center animate-fadeIn">
-          <div className="glass p-8 hover-lift">
-            <div className="text-6xl mb-6 animate-bounce">✅</div>
-            <h2 className="text-3xl font-bold text-white mb-4 text-glow">
-              Message Envoyé!
-            </h2>
-            <p className="text-xl text-white mb-8 text-shadow">
-              Merci pour votre message. Nous vous répondrons dans les plus brefs délais.
-            </p>
-            <button
-              onClick={() => setSuccess(false)}
-              className="btn-cool btn-primary-cool hover-scale px-8 py-3"
-            >
-              📝 Envoyer un Autre Message
-            </button>
+      <div className="contact-container">
+        <Header />
+        <div className="success-container">
+          <div className="success-content">
+            <div className="success-card">
+              <div className="success-icon">✅</div>
+              <h2 className="success-title">
+                Message Envoyé!
+              </h2>
+              <p className="success-message">
+                Merci pour votre message. Nous vous répondrons dans les plus brefs délais.
+              </p>
+              <button
+                onClick={() => setSuccess(false)}
+                className="success-button"
+              >
+                Envoyer un Autre Message
+              </button>
+            </div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="contact-container">
+      <Header />
+
       {/* Hero Section */}
-      <section className="bg-gradient-blue animate-gradient text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="animate-fadeIn">
-            <h1 className="text-5xl font-bold mb-6 animate-float">
+      <section className="contact-hero-section">
+        <div className="contact-hero-grid" />
+        
+        <div className="contact-particles-container">
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className={`contact-particle contact-particle-${i % 5}`}
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${5 + Math.random() * 4}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="contact-hero-content">
+          <div className="container">
+            <h1 className="contact-hero-title">
               📞 Contactez-Nous
             </h1>
-            <p className="text-xl mb-8 text-shadow">
-              Nous sommes là pour vous aider dans votre parcours d'apprentissage
+            <p className="contact-hero-description">
+              Nous sommes là pour vous aider dans votre parcours d'apprentissage juridique
             </p>
           </div>
         </div>
       </section>
 
-      {/* Contact Content */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      {/* Main Contact Section */}
+      <section className="contact-main-section">
+        <div className="container">
+          <div className="contact-grid">
             
             {/* Contact Information */}
-            <div className="animate-slideInLeft">
-              <h2 className="text-3xl font-bold text-gradient mb-8">
-                💬 Restons en Contact
-              </h2>
-              
-              <div className="space-y-6">
-                {/* Contact Methods */}
-                {[
-                  {
-                    icon: '📧',
-                    title: 'Email',
-                    description: 'Envoyez-nous un email',
-                    details: 'contact@cliniquejuriste.com',
-                    delay: '0.1s'
-                  },
-                  {
-                    icon: '📱',
-                    title: 'Téléphone',
-                    description: 'Appelez-nous directement',
-                    details: '+33 1 23 45 67 89',
-                    delay: '0.2s'
-                  },
-                  {
-                    icon: '📍',
-                    title: 'Adresse',
-                    description: 'Visitez nos bureaux',
-                    details: '123 Rue de la Justice, Paris, France',
-                    delay: '0.3s'
-                  },
-                  {
-                    icon: '⏰',
-                    title: 'Horaires',
-                    description: 'Nos heures d\'ouverture',
-                    details: 'Lun-Ven: 9h-18h, Sam: 9h-12h',
-                    delay: '0.4s'
-                  }
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className="card-cool hover-lift animate-slideInLeft group"
-                    style={{animationDelay: item.delay}}
-                  >
-                    <div className="flex items-start space-x-4">
-                      <div className="text-3xl animate-bounce" style={{animationDelay: item.delay}}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-gradient transition-all">
-                          {item.title}
-                        </h3>
-                        <p className="text-gray-600 mb-1">{item.description}</p>
-                        <p className="text-blue-600 font-medium">{item.details}</p>
-                      </div>
+            <div className="contact-info-section">
+              <div className="contact-methods">
+                {/* Email */}
+                <div 
+                  className="contact-method-card"
+                  style={{ animationDelay: '0.1s' }}
+                >
+                  <div className="contact-method-content">
+                    <div className="contact-method-icon">📧</div>
+                    <div className="contact-method-info">
+                      <h3>Email</h3>
+                      <p>Envoyez-nous un email</p>
+                      <div className="contact-detail">contact@cliniquejuriste.com</div>
                     </div>
                   </div>
-                ))}
-
-                {/* Social Media */}
-                <div className="card-cool hover-lift animate-fadeIn" style={{animationDelay: '0.5s'}}>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    🌐 Suivez-Nous
-                  </h3>
-                  <div className="flex space-x-4">
-                    {[
-                      { icon: '📘', name: 'Facebook', color: 'text-blue-600' },
-                      { icon: '🐦', name: 'Twitter', color: 'text-blue-400' },
-                      { icon: '💼', name: 'LinkedIn', color: 'text-blue-700' },
-                      { icon: '📺', name: 'YouTube', color: 'text-red-600' }
-                    ].map((social, index) => (
-                      <button
-                        key={index}
-                        className={`text-2xl ${social.color} hover-scale animate-pulse`}
-                        style={{animationDelay: `${index * 0.1}s`}}
-                        title={social.name}
-                      >
-                        {social.icon}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="contact-method-glow" />
                 </div>
+
+                {/* Telephone */}
+                <div 
+                  className="contact-method-card"
+                  style={{ animationDelay: '0.2s' }}
+                >
+                  <div className="contact-method-content">
+                    <div className="contact-method-icon">📱</div>
+                    <div className="contact-method-info">
+                      <h3>Téléphone</h3>
+                      <p>Appelez-nous directement</p>
+                      <div className="contact-detail">+33 1 23 45 67 89</div>
+                    </div>
+                  </div>
+                  <div className="contact-method-glow" />
+                </div>
+
+                {/* Address */}
+                <div 
+                  className="contact-method-card"
+                  style={{ animationDelay: '0.3s' }}
+                >
+                  <div className="contact-method-content">
+                    <div className="contact-method-icon">📍</div>
+                    <div className="contact-method-info">
+                      <h3>Adresse</h3>
+                      <p>Visitez nos bureaux</p>
+                      <div className="contact-detail">123 Rue de la Justice, Paris, France</div>
+                    </div>
+                  </div>
+                  <div className="contact-method-glow" />
+                </div>
+
+                {/* Hours */}
+                <div 
+                  className="contact-method-card"
+                  style={{ animationDelay: '0.4s' }}
+                >
+                  <div className="contact-method-content">
+                    <div className="contact-method-icon">⏰</div>
+                    <div className="contact-method-info">
+                      <h3>Horaires</h3>
+                      <p>Nos heures d'ouverture</p>
+                      <div className="contact-detail">Lun-Ven: 9h-18h, Sam: 9h-12h</div>
+                    </div>
+                  </div>
+                  <div className="contact-method-glow" />
+                </div>
+
+             
               </div>
             </div>
 
             {/* Contact Form */}
-            <div className="animate-slideInRight">
-              <div className="card-cool hover-lift">
-                <h2 className="text-3xl font-bold text-gradient mb-8">
-                  📝 Envoyez-nous un Message
-                </h2>
+            <div className="contact-form-section">
+              <div className="contact-form-container">
+               
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="contact-form">
                   {error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg animate-slideInRight">
-                      <div className="flex items-center">
-                        <span className="text-xl mr-2">⚠️</span>
-                        <span>{error}</span>
-                      </div>
+                    <div className="error-message">
+                      <span className="error-icon">⚠️</span>
+                      <span>{error}</span>
                     </div>
                   )}
 
                   {/* Name Field */}
-                  <div className="animate-slideInLeft" style={{animationDelay: '0.1s'}}>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="form-group" style={{ animationDelay: '0.1s' }}>
+                    <label htmlFor="name" className="form-label">
                       👤 Nom complet *
                     </label>
                     <input
@@ -192,14 +201,14 @@ const ContactPage: React.FC = () => {
                       required
                       value={form.name}
                       onChange={(e) => handleChange('name', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover-glow"
+                      className="form-input"
                       placeholder="Votre nom complet"
                     />
                   </div>
 
                   {/* Email Field */}
-                  <div className="animate-slideInRight" style={{animationDelay: '0.2s'}}>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="form-group" style={{ animationDelay: '0.2s' }}>
+                    <label htmlFor="email" className="form-label">
                       📧 Adresse e-mail *
                     </label>
                     <input
@@ -208,14 +217,14 @@ const ContactPage: React.FC = () => {
                       required
                       value={form.email}
                       onChange={(e) => handleChange('email', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover-glow"
+                      className="form-input"
                       placeholder="votre@email.com"
                     />
                   </div>
 
                   {/* Subject Field */}
-                  <div className="animate-slideInLeft" style={{animationDelay: '0.3s'}}>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="form-group" style={{ animationDelay: '0.3s' }}>
+                    <label htmlFor="subject" className="form-label">
                       📋 Sujet *
                     </label>
                     <select
@@ -223,7 +232,7 @@ const ContactPage: React.FC = () => {
                       required
                       value={form.subject}
                       onChange={(e) => handleChange('subject', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover-glow"
+                      className="form-select"
                     >
                       <option value="">Choisissez un sujet</option>
                       <option value="question-generale">Question générale</option>
@@ -235,8 +244,8 @@ const ContactPage: React.FC = () => {
                   </div>
 
                   {/* Message Field */}
-                  <div className="animate-slideInRight" style={{animationDelay: '0.4s'}}>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="form-group" style={{ animationDelay: '0.4s' }}>
+                    <label htmlFor="message" className="form-label">
                       💬 Message *
                     </label>
                     <textarea
@@ -245,27 +254,27 @@ const ContactPage: React.FC = () => {
                       rows={6}
                       value={form.message}
                       onChange={(e) => handleChange('message', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover-glow resize-none"
+                      className="form-textarea"
                       placeholder="Décrivez votre demande en détail..."
                     />
                   </div>
 
                   {/* Submit Button */}
-                  <div className="animate-scaleUp" style={{animationDelay: '0.5s'}}>
+                  <div className="form-group" style={{ animationDelay: '0.5s' }}>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="btn-cool btn-primary-cool w-full hover-scale animate-glow py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="submit-button"
                     >
                       {loading ? (
-                        <div className="flex items-center justify-center">
-                          <div className="loading-dots scale-50 mr-2">
+                        <div className="loading-container">
+                          <div className="loading-dots">
                             <div></div>
                             <div></div>
                             <div></div>
                             <div></div>
                           </div>
-                          Envoi en cours...
+                          <span>Envoi en cours...</span>
                         </div>
                       ) : (
                         '🚀 Envoyer le Message'
@@ -279,53 +288,6 @@ const ContactPage: React.FC = () => {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-fadeIn">
-            <h2 className="text-4xl font-bold text-gradient mb-6">
-              ❓ Questions Fréquentes
-            </h2>
-            <p className="text-xl text-gray-600">
-              Trouvez rapidement les réponses à vos questions les plus courantes
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            {[
-              {
-                question: "Comment puis-je m'inscrire à un cours?",
-                answer: "Il suffit de créer un compte gratuit, puis de naviguer vers la page des cours et cliquer sur 'S'inscrire' pour le cours qui vous intéresse."
-              },
-              {
-                question: "Les cours sont-ils gratuits?",
-                answer: "Nous proposons des cours gratuits et premium. Les cours gratuits vous donnent accès au contenu de base, tandis que les cours premium offrent un contenu avancé et un support personnalisé."
-              },
-              {
-                question: "Puis-je obtenir un certificat?",
-                answer: "Oui! Une fois que vous avez terminé un cours avec succès, vous recevrez un certificat de completion que vous pouvez télécharger et partager."
-              },
-              {
-                question: "Comment contacter un instructeur?",
-                answer: "Vous pouvez contacter vos instructeurs directement via la messagerie intégrée dans chaque cours ou utiliser ce formulaire de contact."
-              }
-            ].map((faq, index) => (
-              <div
-                key={index}
-                className="card-cool hover-lift animate-slideInLeft"
-                style={{animationDelay: `${index * 0.1}s`}}
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-gradient transition-all">
-                  {faq.question}
-                </h3>
-                <p className="text-gray-600">
-                  {faq.answer}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

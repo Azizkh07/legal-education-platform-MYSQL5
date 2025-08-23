@@ -171,24 +171,7 @@ const SubjectForm: React.FC<SubjectFormProps> = ({
               : 'bg-red-50 border border-red-200'
           }`}>
             <div className="flex items-center justify-between text-sm">
-              <div>
-                {isAuthenticated && user?.is_admin ? (
-                  <span className="text-green-700">
-                    ✅ Authenticated as {user.name} (Admin)
-                  </span>
-                ) : isAuthenticated && !user?.is_admin ? (
-                  <span className="text-red-700">
-                    ⚠️ Logged in as {user?.name || 'Unknown'} but not admin
-                  </span>
-                ) : (
-                  <span className="text-red-700">
-                    ❌ Not authenticated
-                  </span>
-                )}
-              </div>
-              <span className="text-gray-600 text-xs">
-                UTC: 2025-08-20 13:45:13 | Auto-Order: ✅
-              </span>
+            
             </div>
             {token && (
               <div className="text-xs text-gray-600 mt-1">

@@ -145,10 +145,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ isOpen, onClose, onSuccess, edi
               <h2 className="text-2xl font-bold text-gray-900">
                 📚 {editCourse ? 'Modifier le Cours' : 'Nouveau Cours'}
               </h2>
-              <p className="text-sm text-gray-600">
-                Formulaire simplifié - Titre et description uniquement
-              </p>
-              <p className="text-xs text-gray-500">User: Azizkh07 | Session: 2025-08-20 00:30:07</p>
+              
             </div>
             <button
               onClick={onClose}
@@ -254,11 +251,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ isOpen, onClose, onSuccess, edi
           </form>
 
           {/* Development Note */}
-          <div className="mt-6 text-xs text-gray-500 text-center p-3 bg-gray-50 rounded-lg">
-            <p>🔧 Mode Développement: Formulaire simplifié sans upload de fichiers</p>
-            <p>Pas de catégories, pas d'images - Juste titre et description</p>
-            <p>Session: Azizkh07 | 2025-08-20 00:30:07</p>
-          </div>
+    
         </div>
       </div>
     </div>

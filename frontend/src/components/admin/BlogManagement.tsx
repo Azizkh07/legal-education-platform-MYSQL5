@@ -459,15 +459,10 @@ const BlogManagement: React.FC = () => {
           <p className="text-gray-600">Gérez tous les articles de votre blog</p>
         </div>
         <div className="flex space-x-2">
-          <button
-            onClick={testConnection}
-            className="px-3 py-2 text-sm text-blue-600 hover:text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors duration-200"
-          >
-            🔗 Test Backend
-          </button>
+      
           <button
             onClick={handleNewPost}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
+            className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105"
           >
             ➕ Nouvel Article
           </button>
