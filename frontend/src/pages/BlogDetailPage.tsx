@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { blogService, BlogPost } from '../lib/blog';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import '../styles/BlogDetailPage.css';
 
-// Data URI placeholder image instead of placeholder.com
-const DEFAULT_BLOG_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzAwNjZjYyIvPjx0ZXh0IHg9IjQwMCIgeT0iMzAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMzAiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIj5CbG9nIFBvc3Q8L3RleHQ+PC9zdmc+';
+// Data URI placeholder image
+const DEFAULT_BLOG_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMyMmM1NWUiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNmEzNGEiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjQwMCIgeT0iMjAwIiBmb250LWZhbWlseT0iSW50ZXIiIGZvbnQtc2l6ZT0iMzQiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmb250LXdlaWdodD0iNzAwIj7wn5OSKSBBY3R1YWxpdMOpcyBKdXJpZGlxdWVzPC90ZXh0Pjwvc3ZnPg==';
 
 // Default author avatar
-const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiMwNkI2RDQiLz48dGV4dCB4PSI0MCIgeT0iNDUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZmlsbD0iI2ZmZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgYWxpZ25tZW50LWJhc2VsaW5lPSJtaWRkbGUiPkxFPC90ZXh0Pjwvc3ZnPg==';
+const DEFAULT_AVATAR = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMjJjNTVlIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMTZhMzRhIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSIzMCIgeT0iMzYiIGZvbnQtZmFtaWx5PSJJbnRlciIgZm9udC1zaXplPSIxOCIgZmlsbD0iI2ZmZmZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgYWxpZ25tZW50LWJhc2VsaW5lPSJtaWRkbGUiIGZvbnQtd2VpZ2h0PSI3MDAiPkNKPC90ZXh0Pjwvc3ZnPg==';
 
 // Simple loading spinner component
 const LoadingSpinner: React.FC = () => (
-  <div className="flex justify-center items-center py-8">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+  <div className="blog-loading-container">
+    <div className="blog-loading-spinner"></div>
   </div>
 );
 
@@ -91,85 +94,95 @@ const BlogDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
+      <div className="blog-detail-container">
+        <Header />
         <LoadingSpinner />
+        <Footer />
       </div>
     );
   }
 
   if (error || !post) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-700 mb-6">{errorMsg}</p>
-          <Link
-            to="/blog"
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-md transition"
-          >
-            ← Back to Articles
-          </Link>
+      <div className="blog-detail-container">
+        <Header />
+        <div className="blog-error-container">
+          <div className="blog-error-card">
+            <h1 className="blog-error-title">Oops! Article non trouvé</h1>
+            <p className="blog-error-message">{errorMsg}</p>
+            <Link to="/blog" className="blog-error-back-btn">
+              ← Retour aux articles
+            </Link>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      {/* Hero section with image */}
-      <div className="mb-8 rounded-lg overflow-hidden shadow-lg">
-        <div className="relative h-64 md:h-96 bg-gray-200">
-          <img
-            src={post.cover_image || DEFAULT_BLOG_IMAGE}
-            alt={post.title}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.src = DEFAULT_BLOG_IMAGE;
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Content section */}
-      <div className="bg-white rounded-lg shadow-md p-6 md:p-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{post.title}</h1>
-        
-        <div className="flex items-center mb-6">
-          <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+    <div className="blog-detail-container">
+      <Header />
+      
+      <main className="blog-detail-main">
+        {/* Hero Image Section */}
+        <div className="blog-hero-image-container">
+          <div className="blog-hero-image-wrapper">
             <img
-              src={DEFAULT_AVATAR}
-              alt="Author"
-              className="h-full w-full object-cover"
+              src={post.cover_image || DEFAULT_BLOG_IMAGE}
+              alt={post.title}
+              className="blog-hero-image"
+              onError={(e: any) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = DEFAULT_BLOG_IMAGE;
+              }}
             />
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-900">
-              {post.author_name || 'Clinique Juriste'}
-            </div>
-            <div className="text-sm text-gray-500">
-              {formatDate(post.created_at)}
-            </div>
+            <div className="blog-hero-overlay" />
           </div>
         </div>
-        
-        <div className="prose max-w-none prose-lg prose-blue">
-          {/* Split content by newlines and wrap in paragraphs */}
-          {post.content.split('\n\n').map((paragraph, index) => (
-            paragraph.trim() ? (
-              <p key={index}>{paragraph}</p>
-            ) : null
-          ))}
+
+        {/* Content Section */}
+        <div className="blog-content-card">
+          <h1 className="blog-article-title">{post.title}</h1>
+          
+          <div className="blog-author-section">
+            <div className="blog-author-avatar">
+              <img
+                src={DEFAULT_AVATAR}
+                alt="Author"
+                className="blog-author-avatar-img"
+              />
+            </div>
+            <div className="blog-author-info">
+              <div className="blog-author-name">
+                {post.author_name || 'Clinique des Juristes'}
+              </div>
+              <div className="blog-author-date">
+                {formatDate(post.created_at)}
+              </div>
+            </div>
+          </div>
+          
+          <div className="blog-article-content">
+            <div className="blog-content-prose">
+              {/* Split content by newlines and wrap in paragraphs */}
+              {post.content.split('\n\n').map((paragraph, index) => (
+                paragraph.trim() ? (
+                  <p key={index}>{paragraph}</p>
+                ) : null
+              ))}
+            </div>
+          </div>
+          
+          <div className="blog-navigation-footer">
+            <Link to="/blog" className="blog-back-link">
+              ← Retour à tous les articles
+            </Link>
+          </div>
         </div>
-        
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <Link
-            to="/blog"
-            className="inline-block text-blue-600 hover:text-blue-800 transition"
-          >
-            ← Back to all articles
-          </Link>
-        </div>
-      </div>
+      </main>
+      
+    
     </div>
   );
 };

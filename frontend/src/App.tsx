@@ -14,7 +14,6 @@ import BlogDetailPage from './pages/BlogDetailPage';
 import CoursesPage from './pages/CoursesPage';
 import CourseDetailPage from './pages/CourseDetailPage';
 import ContactPage from './pages/ContactPage';
-import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import DraftsPage from './pages/DraftPage';
 
@@ -129,7 +128,6 @@ function App() {
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
           
           {/* Protected Routes (require authentication) */}
-          <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/courses/:courseId" element={<ProtectedRoute><CourseDetailPage /></ProtectedRoute>} />
           
           {/* Admin Routes (require admin permission) */}

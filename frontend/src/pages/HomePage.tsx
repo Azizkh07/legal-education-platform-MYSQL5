@@ -51,8 +51,9 @@ const HomePage: React.FC = () => {
           console.debug('HomePage: coursesResponseRaw (no items):', coursesResponseRaw);
         }
 
-        setCourses((coursesArray || []).slice(0, 6));
-        setArticles((articlesArray || []).slice(0, 6));
+        // Only show 3 latest courses and articles
+        setCourses((coursesArray || []).slice(0, 3));
+        setArticles((articlesArray || []).slice(0, 3));
       } catch (err) {
         console.error('Failed to fetch homepage data:', err);
         setError('Failed to load content. Please try again later.');
@@ -68,7 +69,7 @@ const HomePage: React.FC = () => {
     // Trigger animations
     setTimeout(() => setIsVisible(true), 300);
 
-    // Mouse tracking for parallax effects
+    // Mouse tracking for parallax effects with reduced intensity
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({
         x: (e.clientX / window.innerWidth) * 2 - 1,
@@ -100,6 +101,28 @@ const HomePage: React.FC = () => {
     return resolveMediaUrl(normalized, placeholder);
   };
 
+  // Better image handling for courses
+  const getCourseImageSrc = (course: any) => {
+    // Try different possible image fields in order of preference
+    const imageFields = [
+      'thumbnail', 
+      'thumbnail_url', 
+      'cover_image', 
+      'cover_image_thumb', 
+      'image', 
+      'picture',
+      'media_url'
+    ];
+    
+    for (const field of imageFields) {
+      if (course[field]) {
+        return buildImgSrc(course[field], '/api/placeholder/400/200');
+      }
+    }
+    
+    return DATA_URI_PLACEHOLDER;
+  };
+
   return (
     <div className="homepage-container">
       <Header />
@@ -109,14 +132,14 @@ const HomePage: React.FC = () => {
         <div className="hero-grid" />
 
         <div className="particles-container">
-          {[...Array(20)].map((_, i) => (
+          {[...Array(15)].map((_, i) => (
             <div
               key={i}
               className={`particle particle-${i % 5}`}
               style={{
                 left: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${3 + Math.random() * 4}s`
+                animationDuration: `${4 + Math.random() * 3}s`
               }}
             />
           ))}
@@ -126,19 +149,19 @@ const HomePage: React.FC = () => {
           <div
             className="bg-shape shape-1"
             style={{
-              transform: `translate(${mousePosition.x * 20}px, ${mousePosition.y * 20}px) rotate(${mousePosition.x * 5}deg)`
+              transform: `translate(${mousePosition.x * 10}px, ${mousePosition.y * 10}px) rotate(${mousePosition.x * 2}deg)`
             }}
           />
           <div
             className="bg-shape shape-2"
             style={{
-              transform: `translate(${mousePosition.x * -15}px, ${mousePosition.y * -15}px) rotate(${mousePosition.y * -3}deg)`
+              transform: `translate(${mousePosition.x * -8}px, ${mousePosition.y * -8}px) rotate(${mousePosition.y * -1.5}deg)`
             }}
           />
           <div
             className="bg-shape shape-3"
             style={{
-              transform: `translate(${mousePosition.x * 10}px, ${mousePosition.y * 25}px)`
+              transform: `translate(${mousePosition.x * 5}px, ${mousePosition.y * 12}px)`
             }}
           />
         </div>
@@ -185,14 +208,13 @@ const HomePage: React.FC = () => {
                     <div className="graduate-image">
                       <div className="graduate-glow" />
                       <img
-                        src={buildImgSrc('/assets/graduate.png', '/api/placeholder/240/240')}
+                        src={buildImgSrc('/assets/graduate.png', '/api/placeholder/400/400')}
                         alt="Graduate"
                         className="graduate-custom-image"
                         onError={(e: any) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = DATA_URI_PLACEHOLDER;
                         }}
-                        style={{ width: 220, height: 220, objectFit: 'cover', borderRadius: '9999px' }}
                       />
 
                       <div className="floating-elements">
@@ -289,15 +311,13 @@ const HomePage: React.FC = () => {
             <>
               <div className="courses-grid">
                 {courses.map((course, index) => {
-                  // prefer a thumb if available, else thumbnail_path or cover_image
-                  const imgField = course.cover_image_thumb || course.thumbnail_path || course.cover_image || undefined;
-                  const imgSrc = buildImgSrc(imgField, '/api/placeholder/400/200');
+                  const imgSrc = getCourseImageSrc(course);
 
                   return (
                     <div
                       key={course.id ?? index}
                       className={`course-card ${isVisible ? 'animate-in' : ''}`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
+                      style={{ animationDelay: `${index * 0.15}s` }}
                     >
                       <div className="course-image-container">
                         <img
@@ -327,7 +347,6 @@ const HomePage: React.FC = () => {
                         <p className="course-description">
                           {course.description || 'Description will be available soon.'}
                         </p>
-                      
                       </div>
 
                       <div className="card-glow" />
@@ -348,7 +367,7 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Articles Section (unchanged) */}
+      {/* Articles Section */}
       <section className="articles-section">
         <div className="container">
           <div className="section-header">
@@ -370,7 +389,7 @@ const HomePage: React.FC = () => {
                     <div
                       key={article.id ?? index}
                       className={`article-card ${isVisible ? 'animate-in' : ''}`}
-                      style={{ animationDelay: `${index * 0.15}s` }}
+                      style={{ animationDelay: `${index * 0.2}s` }}
                     >
                       <div className="article-image-container">
                         <img

@@ -4,11 +4,15 @@ import { blogService, BlogPost } from '../lib/blog';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import Loading from '../components/Loading';
+import '../styles/BlogPage.css';
+
+const DEFAULT_BLOG_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMyMmM1NWUiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNmEzNGEiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0idXJsKCNnKSIvPjx0ZXh0IHg9IjQwMCIgeT0iMzAwIiBmb250LWZhbWlseT0iSW50ZXIiIGZvbnQtc2l6ZT0iMzQiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmb250LXdlaWdodD0iNzAwIj7wn5OSKSBBY3R1YWxpdMOpcyBKdXJpZGlxdWVzPC90ZXh0Pjwvc3ZnPg==';
 
 const BlogPage: React.FC = () => {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -25,6 +29,9 @@ const BlogPage: React.FC = () => {
     };
 
     fetchBlogs();
+
+    // Trigger animations
+    setTimeout(() => setIsVisible(true), 300);
   }, []);
 
   // Function to format date
@@ -46,59 +53,97 @@ const BlogPage: React.FC = () => {
   if (loading) return <Loading />;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="blog-page-container">
       <Header />
       
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Latest Articles</h1>
-          
+      {/* Hero Section */}
+      <section className="blog-hero-section">
+        <div className="blog-hero-grid" />
+        
+        <div className="blog-particles-container">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="blog-particle" />
+          ))}
+        </div>
+
+        <div className="blog-hero-content">
+          <div className="blog-hero-badge">
+            <span className="blog-badge-icon">✍️</span>
+            <span className="blog-badge-text">Actualités & Conseils Juridiques</span>
+            <div className="blog-badge-glow" />
+          </div>
+
+          <h1 className="blog-hero-title">
+            Derniers <span className="blog-title-highlight">Articles</span>
+          </h1>
+
+          <p className="blog-hero-description">
+            Découvrez nos conseils d'experts, actualités juridiques et ressources pédagogiques pour rester informé des dernières évolutions du droit.
+          </p>
+        </div>
+      </section>
+      
+      {/* Main Content */}
+      <main className="blog-main-content">
+        <div className="blog-container">
           {error && (
-            <div className="bg-red-100 text-red-700 p-4 rounded mb-6">
-              {error}
+            <div className="blog-error-card">
+              <p className="blog-error-text">{error}</p>
             </div>
           )}
           
           {blogs.length === 0 && !error ? (
-            <div className="text-center py-10">
-              <p className="text-gray-600">No articles published yet. Check back soon!</p>
+            <div className="blog-empty-state">
+              <div className="blog-empty-animation">📝</div>
+              <p className="blog-empty-text">Nos articles arrivent bientôt! Revenez prochainement pour découvrir nos contenus juridiques.</p>
             </div>
           ) : (
-            <div className="grid gap-8">
-              {blogs.map((blog) => (
-                <article key={blog.id} className="bg-white rounded-lg shadow overflow-hidden">
-                  {blog.cover_image && (
-                    <div className="h-48 w-full overflow-hidden">
-                      <img 
-                        src={blog.cover_image} 
-                        alt={blog.title} 
-                        className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                      />
-                    </div>
-                  )}
+            <div className="blog-grid">
+              {blogs.map((blog, index) => (
+                <article 
+                  key={blog.id} 
+                  className={`blog-card ${isVisible ? 'animate-in' : ''}`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="blog-image-container">
+                    <img 
+                      src={blog.cover_image || DEFAULT_BLOG_IMAGE} 
+                      alt={blog.title} 
+                      className="blog-image"
+                      onError={(e: any) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_BLOG_IMAGE;
+                      }}
+                      loading="lazy"
+                    />
+                    <div className="blog-image-overlay" />
+                  </div>
                   
-                  <div className="p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">
-                      <Link to={`/blog/${blog.slug}`} className="hover:text-blue-600 transition">
+                  <div className="blog-content">
+                    <h2 className="blog-title">
+                      <Link to={`/blog/${blog.slug}`} className="blog-title-link">
                         {blog.title}
                       </Link>
                     </h2>
                     
-                    <p className="text-sm text-gray-500 mb-4">
+                    <div className="blog-date">
                       {formatDate(blog.created_at)}
-                    </p>
+                    </div>
                     
-                    <div className="prose prose-sm mb-4 text-gray-600">
+                    <div className="blog-excerpt">
                       {getExcerpt(blog.content, blog.excerpt)}
                     </div>
                     
                     <Link 
                       to={`/blog/${blog.slug}`}
-                      className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded transition"
+                      className="blog-read-more"
                     >
-                      Read More
+                      <span>Lire la suite</span>
+                      <span className="blog-read-more-icon">→</span>
                     </Link>
                   </div>
+
+                  <div className="blog-card-glow" />
                 </article>
               ))}
             </div>
@@ -106,6 +151,7 @@ const BlogPage: React.FC = () => {
         </div>
       </main>
       
+    
     </div>
   );
 };
