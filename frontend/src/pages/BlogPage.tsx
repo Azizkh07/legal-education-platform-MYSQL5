@@ -183,7 +183,6 @@ const BlogPage: React.FC = () => {
         </div>
       </main>
       
-      <Footer />
     </div>
   );
 };
