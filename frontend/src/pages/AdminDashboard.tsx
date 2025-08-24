@@ -217,7 +217,6 @@ const AdminDashboard: React.FC = () => {
           <div className="admin-user-section">
             <div className="admin-user-info">
               <p className="admin-user-name">{user?.name || 'Administrateur'}</p>
-              <p className="admin-user-role">Super Admin</p>
             </div>
             <button onClick={logout} className="admin-logout-btn">
               <span>↗</span>

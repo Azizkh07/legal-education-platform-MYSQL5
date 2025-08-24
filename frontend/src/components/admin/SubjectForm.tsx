@@ -164,43 +164,9 @@ const SubjectForm: React.FC<SubjectFormProps> = ({
             </button>
           </div>
 
-          {/* ENHANCED: Authentication status banner */}
-          <div className={`mb-4 p-3 rounded-lg ${
-            isAuthenticated && user?.is_admin 
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className="flex items-center justify-between text-sm">
-            
-            </div>
-            {token && (
-              <div className="text-xs text-gray-600 mt-1">
-                Token: {token.substring(0, 20)}... ({token.length} chars)
-              </div>
-            )}
-          </div>
+  
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              <div className="flex items-start space-x-2">
-                <span className="text-lg">⚠️</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{error}</p>
-                  {(error.includes('Authentication') || error.includes('session')) && (
-                    <button
-                      onClick={() => {
-                        apiUtils.removeAuthToken();
-                        window.location.href = '/login';
-                      }}
-                      className="text-xs text-red-600 underline mt-2 hover:text-red-800"
-                    >
-                      🔄 Go to Login Page
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+    
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
