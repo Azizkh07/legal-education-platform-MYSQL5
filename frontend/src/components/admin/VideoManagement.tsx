@@ -246,12 +246,7 @@ const VideoManagement: React.FC = () => {
             {new Set(videos.map(v => v.subject_id)).size}
           </p>
         </div>
-        <div className="bg-orange-50 p-4 rounded-lg">
-          <h3 className="text-sm font-medium text-orange-900">Taille Totale</h3>
-          <p className="text-2xl font-bold text-orange-600">
-            {formatFileSize(videos.reduce((sum, v) => sum + (v.file_size || 0), 0))}
-          </p>
-        </div>
+     
       </div>
 
       {/* ✅ FIXED: Filter Controls */}
