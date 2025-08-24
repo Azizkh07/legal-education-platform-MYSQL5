@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { courseService } from '../lib/courses';
 import { blogService } from '../lib/blog';
 import Header from '../components/Header';
@@ -11,6 +12,7 @@ import '../styles/HomePage.css';
 const DATA_URI_PLACEHOLDER = "/assets/courses.jpg";
 
 const HomePage: React.FC = () => {
+  const { t } = useTranslation();
   const [courses, setCourses] = useState<any[]>([]);
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -27,34 +29,20 @@ const HomePage: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // cast to any to avoid TS narrowing to never
         const [coursesResponseRaw, articlesResponseRaw] = (await Promise.all([
           courseService.getCourses(),
           blogService.getBlogPosts()
         ])) as any[];
 
-        // coursesResponseRaw should already be normalized by courseService
         const coursesArray: any[] = Array.isArray(coursesResponseRaw) ? coursesResponseRaw : (coursesResponseRaw?.data || coursesResponseRaw?.courses || coursesResponseRaw?.items || []);
-
-        // robust extraction for articles (use "as any" when accessing dynamic props)
         const aResp: any = articlesResponseRaw;
-        const articlesArray: any[] = Array.isArray(aResp)
-          ? aResp
-          : (aResp && (aResp.posts || aResp.data || aResp.items || aResp.results)) || [];
+        const articlesArray: any[] = Array.isArray(aResp) ? aResp : (aResp && (aResp.posts || aResp.data || aResp.items || aResp.results)) || [];
 
-        // helpful debug info if thumbnails are missing
-        if (coursesArray && coursesArray.length > 0) {
-          console.debug('HomePage: first course sample:', coursesArray[0]);
-        } else {
-          console.debug('HomePage: coursesResponseRaw (no items):', coursesResponseRaw);
-        }
-
-        // Only show 3 latest courses and articles
         setCourses((coursesArray || []).slice(0, 3));
         setArticles((articlesArray || []).slice(0, 3));
       } catch (err) {
         console.error('Failed to fetch homepage data:', err);
-        setError('Failed to load content. Please try again later.');
+        setError(t('homepage.error_loading', 'Failed to load content. Please try again later.'));
         setCourses([]);
         setArticles([]);
       } finally {
@@ -64,10 +52,8 @@ const HomePage: React.FC = () => {
 
     fetchData();
 
-    // Trigger animations
     setTimeout(() => setIsVisible(true), 300);
 
-    // Mouse tracking for parallax effects with reduced intensity
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({
         x: (e.clientX / window.innerWidth) * 2 - 1,
@@ -77,47 +63,31 @@ const HomePage: React.FC = () => {
 
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  }, [t]);
 
   if (loading) return <Loading />;
 
-  // Helper to normalize path before calling resolveMediaUrl:
   const buildImgSrc = (rawPath: any, placeholder = '/api/placeholder/400/200') => {
     if (!rawPath) return resolveMediaUrl(undefined, placeholder);
-
-    if (typeof rawPath !== 'string') {
-      return resolveMediaUrl(undefined, placeholder);
-    }
-
-    // If absolute URL, use as is
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
-      return rawPath;
-    }
-
-    // Ensure leading slash for relative paths so resolveMediaUrl can prefix API base
+    if (typeof rawPath !== 'string') return resolveMediaUrl(undefined, placeholder);
+    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) return rawPath;
     const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
     return resolveMediaUrl(normalized, placeholder);
   };
 
-  // Better image handling for courses
   const getCourseImageSrc = (course: any) => {
-    // Try different possible image fields in order of preference
     const imageFields = [
-      'thumbnail', 
-      'thumbnail_url', 
-      'cover_image', 
-      'cover_image_thumb', 
-      'image', 
+      'thumbnail',
+      'thumbnail_url',
+      'cover_image',
+      'cover_image_thumb',
+      'image',
       'picture',
       'media_url'
     ];
-    
     for (const field of imageFields) {
-      if (course[field]) {
-        return buildImgSrc(course[field], '/api/placeholder/400/200');
-      }
+      if (course[field]) return buildImgSrc(course[field], '/api/placeholder/400/200');
     }
-    
     return DATA_URI_PLACEHOLDER;
   };
 
@@ -126,7 +96,7 @@ const HomePage: React.FC = () => {
       <Header />
 
       {/* Hero Section */}
-      <section className="hero-section">
+      <section className="hero-section" aria-label={t('hero.section_label', 'Hero')}>
         <div className="hero-grid" />
 
         <div className="particles-container">
@@ -169,52 +139,51 @@ const HomePage: React.FC = () => {
             <div className="hero-layout">
               <div className={`hero-text ${isVisible ? 'animate-in' : ''}`}>
                 <div className="hero-badge">
-                  <span className="badge-icon">⚖️</span>
-                  <span className="badge-text">L'éducation Juridique Premium</span>
+                  <span className="badge-icon">{t('hero.badge_icon', '⚖️')}</span>
+                  <span className="badge-text">{t('hero.badge_text', "L'éducation Juridique Premium")}</span>
                   <div className="badge-glow" />
                 </div>
 
-                <h1 className="hero-title">
-                  <span className="title-line">L'éducation</span>
-                  <span className="title-highlight">Juridique</span>
-                  <span className="title-line">Moderne,</span>
-                  <span className="title-accent">À Portée De Main</span>
+                <h1 className="hero-title" aria-label={t('hero.title_aria', "L'éducation Juridique Moderne, À Portée De Main")}>
+                  <span className="title-line">{t('hero.title_part1', "L'éducation")}</span>
+                  <span className="title-highlight">{t('hero.title_highlight', "Juridique")}</span>
+                  <span className="title-line">{t('hero.title_part3', "Moderne,")}</span>
+                  <span className="title-accent">{t('hero.title_accent', "À Portée De Main")}</span>
                 </h1>
 
                 <p className="hero-description">
-                  Clinique des juristes - Toutes les disciplines juridiques. Formations expertes modernes, pour réussir.
+                  {t('hero.description', "Clinique des juristes - Toutes les disciplines juridiques. Formations expertes modernes, pour réussir.")}
                 </p>
 
                 <div className="hero-actions">
                   <Link to="/courses" className="cta-primary">
                     <span className="btn-bg" />
-                    <span className="btn-text">En savoir plus</span>
+                    <span className="btn-text">{t('buttons.cta_more', 'En savoir plus')}</span>
                     <div className="btn-shine" />
                   </Link>
 
                   <Link to="/contact" className="cta-secondary">
-                    <span className="btn-text">Nous contacter</span>
+                    <span className="btn-text">{t('buttons.contact_us', 'Nous contacter')}</span>
                     <div className="btn-border-animation" />
                   </Link>
                 </div>
               </div>
 
-              {/* Right visual: use your image (place in public/assets or backend uploads) */}
+              {/* Right visual */}
               <div className={`hero-visual ${isVisible ? 'animate-in' : ''}`}>
                 <div className="visual-container">
                   <div className="graduate-circle">
                     <div className="graduate-image">
                       <div className="graduate-glow" />
                       <img
-                        src={buildImgSrc('/assets/graduate.png', '/api/placeholder/400/400')}
-                        alt="Graduate"
+                        src={buildImgSrc(HERO_IMAGE_PATH, '/api/placeholder/400/400')}
+                        alt={t('hero.image_alt', 'Graduate')}
                         className="graduate-custom-image"
                         onError={(e: any) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = DATA_URI_PLACEHOLDER;
                         }}
                       />
-
                       <div className="floating-elements">
                         <div className="float-element element-1">📚</div>
                         <div className="float-element element-2">⚖️</div>
@@ -236,8 +205,7 @@ const HomePage: React.FC = () => {
       <section className="why-choose-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Pourquoi choisir Clinique des juristes</h2>
-          
+            <h2 className="section-title">{t('why.title', 'Pourquoi choisir Clinique des juristes')}</h2>
           </div>
 
           <div className="features-grid">
@@ -252,8 +220,8 @@ const HomePage: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <h3 className="feature-title">Contenu structuré et clair</h3>
-              <p className="feature-description">Des modules pédagogiques organisés par des experts du droit</p>
+              <h3 className="feature-title">{t('features.title1', 'Contenu structuré et clair')}</h3>
+              <p className="feature-description">{t('features.desc1', 'Des modules pédagogiques organisés par des experts du droit')}</p>
               <div className="feature-glow" />
             </div>
 
@@ -267,8 +235,8 @@ const HomePage: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <h3 className="feature-title">Apprenez à votre rythme</h3>
-              <p className="feature-description">Accès illimité, cours disponibles 24h/24, 7j/7 on the App</p>
+              <h3 className="feature-title">{t('features.title2', 'Apprenez à votre rythme')}</h3>
+              <p className="feature-description">{t('features.desc2', 'Accès illimité, cours disponibles 24h/24, 7j/7 on the App')}</p>
               <div className="feature-glow" />
             </div>
 
@@ -280,8 +248,8 @@ const HomePage: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <h3 className="feature-title">Objectif concours & réussite</h3>
-              <p className="feature-description">Préparation intensive pour les épreuves écrites CRFPA et orales</p>
+              <h3 className="feature-title">{t('features.title3', 'Objectif concours & réussite')}</h3>
+              <p className="feature-description">{t('features.desc3', 'Préparation intensive pour les épreuves écrites CRFPA et orales')}</p>
               <div className="feature-glow" />
             </div>
           </div>
@@ -292,16 +260,16 @@ const HomePage: React.FC = () => {
       <section className="courses-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Nos cours</h2>
+            <h2 className="section-title">{t('courses.title', 'Nos cours')}</h2>
             <p className="section-subtitle">
-              Améliorer significativement vos formations les plus efficaces, mises à jour par nos enseignants.
+              {t('courses.subtitle', "Améliorer significativement vos formations les plus efficaces, mises à jour par nos enseignants.")}
             </p>
           </div>
 
           {courses.length === 0 ? (
             <div className="empty-state">
               <div className="empty-animation">📚</div>
-              <p>Nos cours arrivent bientôt!</p>
+              <p>{t('courses.empty_title', 'Nos cours arrivent bientôt!')}</p>
             </div>
           ) : (
             <>
@@ -318,7 +286,7 @@ const HomePage: React.FC = () => {
                       <div className="course-image-container">
                         <img
                           src={imgSrc}
-                          alt={course.title || 'Course'}
+                          alt={course.title || t('courses.untitled', 'Course')}
                           className="course-image"
                           onError={(e: any) => {
                             e.currentTarget.onerror = null;
@@ -329,19 +297,19 @@ const HomePage: React.FC = () => {
 
                         <div className="course-overlay">
                           <Link to={`/courses/${course.id}`} className="course-link">
-                            <span>Voir le cours</span>
+                            <span>{t('courses.view_course', 'Voir le cours')}</span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M7 17L17 7M17 7H7M17 7V17" />
                             </svg>
                           </Link>
                         </div>
-                        <div className="course-badge">Nouveau</div>
+                        <div className="course-badge">{t('courses.badge_new', 'Nouveau')}</div>
                       </div>
 
                       <div className="course-content">
-                        <h3 className="course-title">{course.title || 'Untitled Course'}</h3>
+                        <h3 className="course-title">{course.title || t('courses.untitled', 'Untitled Course')}</h3>
                         <p className="course-description">
-                          {course.description || 'Description will be available soon.'}
+                          {course.description || t('courses.description_placeholder', 'Description will be available soon.')}
                         </p>
                       </div>
 
@@ -353,7 +321,7 @@ const HomePage: React.FC = () => {
 
               <div className="section-footer">
                 <Link to="/courses" className="view-all-btn">
-                  <span>Voir Tous</span>
+                  <span>{t('courses.view_all', 'Voir Tous')}</span>
                   <div className="btn-arrow">→</div>
                   <div className="btn-ripple" />
                 </Link>
@@ -367,14 +335,14 @@ const HomePage: React.FC = () => {
       <section className="articles-section">
         <div className="container">
           <div className="section-header">
-            <h2 className="section-title">Derniers articles</h2>
-            <p className="section-subtitle">Découvrez nos conseils, actualités juridiques et ressources pédagogiques.</p>
+            <h2 className="section-title">{t('articles.title', 'Derniers articles')}</h2>
+            <p className="section-subtitle">{t('articles.subtitle', 'Découvrez nos conseils, actualités juridiques et ressources pédagogiques.')}</p>
           </div>
 
           {articles.length === 0 ? (
             <div className="empty-state">
               <div className="empty-animation">✍️</div>
-              <p>Nos articles arrivent bientôt!</p>
+              <p>{t('articles.empty_title', 'Nos articles arrivent bientôt!')}</p>
             </div>
           ) : (
             <>
@@ -405,8 +373,8 @@ const HomePage: React.FC = () => {
                         <div className="article-meta">
                           <span className="article-date">{article.created_at ? new Date(article.created_at).toLocaleDateString() : '—'}</span>
                         </div>
-                        <h3 className="article-title">{article.title || 'Untitled Article'}</h3>
-                        <p className="article-excerpt">{article.excerpt || 'Article excerpt will appear here.'}</p>
+                        <h3 className="article-title">{article.title || t('articles.untitled', 'Untitled Article')}</h3>
+                        <p className="article-excerpt">{article.excerpt || t('articles.excerpt_placeholder', 'Article excerpt will appear here.')}</p>
                       </div>
 
                       <div className="card-hover-effect" />
@@ -417,7 +385,7 @@ const HomePage: React.FC = () => {
 
               <div className="section-footer">
                 <Link to="/blog" className="view-all-btn">
-                  <span>Voir Tous</span>
+                  <span>{t('articles.view_all', 'Voir Tous')}</span>
                   <div className="btn-arrow">→</div>
                   <div className="btn-ripple" />
                 </Link>
@@ -428,11 +396,7 @@ const HomePage: React.FC = () => {
       </section>
 
     </div>
-
   );
-
-
 };
-
 
 export default HomePage;

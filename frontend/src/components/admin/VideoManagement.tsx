@@ -210,9 +210,7 @@ const VideoManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">🎬 Gestion des Vidéos</h1>
-          <p className="text-gray-600 mt-1">
-            Plateforme de cours juridiques - Azizkh07 | 2025-08-20 13:55:40
-          </p>
+        
         </div>
         <button
           onClick={() => setShowUploadForm(true)}

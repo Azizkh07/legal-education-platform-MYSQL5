@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { useTranslation } from 'react-i18next';
 import '../styles/LoginPage.css';
 
 interface LoginCredentials {
@@ -11,6 +11,7 @@ interface LoginCredentials {
 }
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, error: authError, loading: authLoading } = useAuth();
@@ -65,7 +66,7 @@ const LoginPage: React.FC = () => {
       navigate(redirectPath);
     } catch (err) {
       console.error('❌ Login error:', err);
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
+      setError(err instanceof Error ? err.message : t('auth.login.error_default', 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
@@ -78,10 +79,10 @@ const LoginPage: React.FC = () => {
       <Header />
 
       {/* Login Section */}
-      <section className="login-section">
+      <section className="login-section" aria-labelledby="login-title">
         <div className="login-grid" />
 
-        <div className="particles-container">
+        <div className="particles-container" aria-hidden>
           {[...Array(15)].map((_, i) => (
             <div
               key={i}
@@ -95,7 +96,7 @@ const LoginPage: React.FC = () => {
           ))}
         </div>
 
-        <div className="login-bg-shapes">
+        <div className="login-bg-shapes" aria-hidden>
           <div
             className="bg-shape shape-1"
             style={{
@@ -123,22 +124,19 @@ const LoginPage: React.FC = () => {
               <div className={`login-form-container ${isVisible ? 'animate-in' : ''}`}>
                 <div className="login-form-wrapper">
                   <div className="login-header">
-                 
-
-                    <h1 className="login-title">
-                      <span className="title-line">Bienvenue</span>
-                      <span className="title-highlight">de retour</span>
+                    <h1 id="login-title" className="login-title">
+                      <span className="title-line">{t('auth.login.welcome_line1', 'Welcome')}</span>
+                      <span className="title-highlight">{t('auth.login.welcome_line2', 'back')}</span>
                     </h1>
 
                     <p className="login-description">
-                      Connectez-vous à votre compte pour accéder à vos cours et ressources juridiques
+                      {t('auth.login.subtitle', 'Sign in to access your courses and legal resources')}
                     </p>
                   </div>
-                 
 
                   <div className="login-form-card">
                     {displayError && (
-                      <div className="error-alert">
+                      <div className="error-alert" role="alert" aria-live="assertive">
                         <p>{displayError}</p>
                       </div>
                     )}
@@ -146,7 +144,7 @@ const LoginPage: React.FC = () => {
                     <form onSubmit={handleSubmit} noValidate className="login-form">
                       <div className="form-group">
                         <label htmlFor="email" className="form-label">
-                          Adresse Email
+                          {t('auth.login.email_label', 'Email address')}
                         </label>
                         <input
                           type="email"
@@ -156,14 +154,15 @@ const LoginPage: React.FC = () => {
                           onChange={handleChange}
                           required
                           className="form-input"
-                          placeholder="votre.email@exemple.com"
+                          placeholder={t('auth.login.email_placeholder', 'your.email@example.com')}
                           disabled={loading || authLoading}
+                          aria-required
                         />
                       </div>
 
                       <div className="form-group">
                         <label htmlFor="password" className="form-label">
-                          Mot de passe
+                          {t('auth.login.password_label', 'Password')}
                         </label>
                         <input
                           type="password"
@@ -173,8 +172,9 @@ const LoginPage: React.FC = () => {
                           onChange={handleChange}
                           required
                           className="form-input"
-                          placeholder="••••••••"
+                          placeholder={t('auth.login.password_placeholder', '••••••••')}
                           disabled={loading || authLoading}
+                          aria-required
                         />
                       </div>
 
@@ -182,16 +182,17 @@ const LoginPage: React.FC = () => {
                         type="submit"
                         disabled={loading || authLoading}
                         className={`login-btn ${loading || authLoading ? 'loading' : ''}`}
+                        aria-busy={loading || authLoading}
                       >
                         <span className="btn-bg" />
                         <span className="btn-text">
                           {loading || authLoading ? (
                             <>
-                              <div className="loading-spinner" />
-                              Connexion...
+                              <div className="loading-spinner" aria-hidden />
+                              {t('auth.login.connecting', 'Signing in...')}
                             </>
                           ) : (
-                            'Se connecter'
+                            t('auth.login.submit', 'Sign in')
                           )}
                         </span>
                         <div className="btn-shine" />
@@ -200,13 +201,13 @@ const LoginPage: React.FC = () => {
 
                     <div className="login-footer">
                       <div className="divider">
-                        <span className="divider-text">Nouveau ici ?</span>
+                        <span className="divider-text">{t('auth.login.new_here', 'New here?')}</span>
                       </div>
-                      
+
                       <p className="signup-text">
-                        Vous n'avez pas encore de compte ?{' '}
+                        {t('auth.login.no_account', "Don't have an account?")}{' '}
                         <Link to="/contact" className="signup-link">
-                          <span>Contactez-nous</span>
+                          <span>{t('auth.login.contact_us', 'Contact us')}</span>
                           <div className="link-underline" />
                         </Link>
                       </p>
@@ -217,7 +218,7 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
       </section>
 
     </div>

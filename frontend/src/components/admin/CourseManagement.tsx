@@ -305,7 +305,6 @@ const CourseManagement: React.FC = () => {
                       <span className="text-2xl">📚</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500">ID: {course.id}</span>
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         course.is_active 
                           ? 'bg-green-100 text-green-800' 

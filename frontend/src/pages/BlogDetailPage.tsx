@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { blogService, BlogPost } from '../lib/blog';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -30,6 +31,7 @@ const looksLikeHtml = (s?: string) => {
 };
 
 const BlogDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,39 +45,33 @@ const BlogDetailPage: React.FC = () => {
       setPost(null);
 
       if (!slug) {
-        setErrorMsg('Invalid blog URL');
+        setErrorMsg(t('blog.detail_invalid_url', 'Invalid blog URL'));
         setLoading(false);
         return;
       }
 
       try {
-        console.log('Fetching blog detail for slug:', slug);
-
         // 1) Try slug lookup first (raw slug)
         let found: BlogPost | null = null;
         try {
-          console.log('Trying getBlogBySlug(raw)');
           found = await blogService.getBlogBySlug(slug);
-          if (found) console.log('Found by slug (raw)');
         } catch (errRaw: any) {
           console.warn('getBlogBySlug(raw) failed:', errRaw?.message || errRaw);
           const statusRaw = errRaw?.response?.status || errRaw?.status;
           if (statusRaw === 401) {
-            setErrorMsg('Unauthorized (401) — blog API requires authentication. Check token/session.');
+            setErrorMsg(t('blog.error_unauthorized', 'Unauthorized (401) — blog API requires authentication. Check token/session.'));
             setLoading(false);
             return;
           }
           // try encoded slug next
           try {
             const encoded = encodeURIComponent(slug);
-            console.log('Trying getBlogBySlug(encoded):', encoded);
             found = await (blogService as any).getBlogBySlug(encoded);
-            if (found) console.log('Found by slug (encoded)');
           } catch (errEnc: any) {
             console.warn('getBlogBySlug(encoded) failed:', errEnc?.message || errEnc);
             const statusEnc = errEnc?.response?.status || errEnc?.status;
             if (statusEnc === 401) {
-              setErrorMsg('Unauthorized (401) — blog API requires authentication. Check token/session.');
+              setErrorMsg(t('blog.error_unauthorized', 'Unauthorized (401) — blog API requires authentication. Check token/session.'));
               setLoading(false);
               return;
             }
@@ -86,24 +82,18 @@ const BlogDetailPage: React.FC = () => {
         if (!found) {
           const maybeNum = Number(slug);
           if (!Number.isNaN(maybeNum)) {
-            // Try direct ID endpoint if available
             try {
               if (typeof (blogService as any).getBlogById === 'function') {
-                console.log('Trying getBlogById fallback for numeric slug');
                 found = await (blogService as any).getBlogById(maybeNum);
-                if (found) console.log('Found by ID');
               } else {
-                // fallback: fetch all and search
-                console.log('getBlogById not available, using getBlogPosts fallback');
                 const all = await blogService.getBlogPosts();
                 found = all.find(p => p.id === maybeNum) || null;
-                if (found) console.log('Found in getBlogPosts fallback by id');
               }
             } catch (errId: any) {
               console.warn('ID fallback failed:', errId?.message || errId);
               const statusId = errId?.response?.status || errId?.status;
               if (statusId === 401) {
-                setErrorMsg('Unauthorized (401) when trying ID fallback — check API credentials.');
+                setErrorMsg(t('blog.error_unauthorized', 'Unauthorized (401) — check blog API credentials.'));
                 setLoading(false);
                 return;
               }
@@ -112,8 +102,7 @@ const BlogDetailPage: React.FC = () => {
         }
 
         if (!found) {
-          setErrorMsg('Article not found or inaccessible (404 / permissions).');
-          console.error('Blog post not found for slug:', slug);
+          setErrorMsg(t('blog.detail_not_found', 'Article not found or inaccessible (404 / permissions).'));
           setLoading(false);
           return;
         }
@@ -126,24 +115,24 @@ const BlogDetailPage: React.FC = () => {
       } catch (err: any) {
         console.error('Unhandled error fetching blog detail:', err);
         const status = err?.response?.status || err?.status;
-        if (status === 401) setErrorMsg('Unauthorized (401) — check blog API credentials.');
-        else if (status === 404) setErrorMsg('Article not found (404).');
-        else setErrorMsg('Failed to load blog post: ' + (err?.message || 'Unknown error'));
+        if (status === 401) setErrorMsg(t('blog.error_unauthorized', 'Unauthorized (401) — check blog API credentials.'));
+        else if (status === 404) setErrorMsg(t('blog.detail_not_found', 'Article not found (404).'));
+        else setErrorMsg(t('blog.detail_load_failed', 'Failed to load blog post: {{msg}}', { msg: err?.message || 'Unknown error' }));
         setLoading(false);
       }
     };
 
     fetchBlogPost();
-  }, [slug]);
+  }, [slug, t]);
 
   const renderChunk = (chunk: string, idx: number) => {
-    const t = chunk.trim();
-    if (!t) return null;
-    if (looksLikeHtml(t)) {
-      const sanitized = DOMPurify.sanitize(t);
+    const s = chunk.trim();
+    if (!s) return null;
+    if (looksLikeHtml(s)) {
+      const sanitized = DOMPurify.sanitize(s);
       return <div key={idx} dangerouslySetInnerHTML={{ __html: sanitized }} />;
     }
-    return <p key={idx}>{t}</p>;
+    return <p key={idx}>{s}</p>;
   };
 
   if (loading) {
@@ -162,9 +151,9 @@ const BlogDetailPage: React.FC = () => {
         <Header />
         <div className="blog-error-container">
           <div className="blog-error-card">
-            <h1 className="blog-error-title">Article indisponible</h1>
-            <p className="blog-error-message">{errorMsg || 'Article not available'}</p>
-            <Link to="/blog" className="blog-error-back-btn">← Retour aux articles</Link>
+            <h1 className="blog-error-title">{t('blog.detail_unavailable_title', 'Article unavailable')}</h1>
+            <p className="blog-error-message">{errorMsg || t('blog.detail_unavailable_message', 'Article not available')}</p>
+            <Link to="/blog" className="blog-error-back-btn">← {t('blog.back_to_list', 'Back to articles')}</Link>
           </div>
         </div>
         <Footer />
@@ -173,7 +162,7 @@ const BlogDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="blog-detail-container" lang={isRtl ? 'ar' : 'fr'}>
+    <div className="blog-detail-container" lang={isRtl ? 'ar' : undefined}>
       <Header />
       <main className="blog-detail-main" dir={isRtl ? 'rtl' : 'ltr'}>
         <div className="blog-hero-image-container">
@@ -193,10 +182,10 @@ const BlogDetailPage: React.FC = () => {
 
           <div className="blog-author-section">
             <div className="blog-author-avatar">
-              <img src={DEFAULT_AVATAR} alt="Author" className="blog-author-avatar-img" />
+              <img src={DEFAULT_AVATAR} alt={t('blog.author_alt', 'Author')} className="blog-author-avatar-img" />
             </div>
             <div className="blog-author-info">
-              <div className="blog-author-name">{post.author_name || 'Clinique des Juristes'}</div>
+              <div className="blog-author-name">{post.author_name || t('blog.author_default', 'Legal Clinic')}</div>
               <div className="blog-author-date">{new Date(post.created_at).toLocaleDateString()}</div>
             </div>
           </div>
@@ -208,7 +197,7 @@ const BlogDetailPage: React.FC = () => {
           </div>
 
           <div className="blog-navigation-footer">
-            <Link to="/blog" className="blog-back-link">← Retour à tous les articles</Link>
+            <Link to="/blog" className="blog-back-link">← {t('blog.back_to_list', 'Back to articles')}</Link>
           </div>
         </div>
       </main>

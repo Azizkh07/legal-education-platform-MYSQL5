@@ -3,9 +3,11 @@ import { ContactForm } from '../types';
 import { api, handleApiResponse, getErrorMessage } from '../lib/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { useTranslation } from 'react-i18next';
 import '../styles/ContactPage.css';
 
 const ContactPage: React.FC = () => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<ContactForm>({
     name: '',
     email: '',
@@ -27,7 +29,7 @@ const ContactPage: React.FC = () => {
       setSuccess(true);
       setForm({ name: '', email: '', subject: '', message: '' });
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError(getErrorMessage(err) || t('contact.error_generic', 'Failed to send message. Please try again later.'));
     } finally {
       setLoading(false);
     }
@@ -46,22 +48,22 @@ const ContactPage: React.FC = () => {
         <div className="success-container">
           <div className="success-content">
             <div className="success-card">
-              <div className="success-icon">
+              <div className="success-icon" aria-hidden>
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
               <h2 className="success-title">
-                Message Envoyé !
+                {t('contact.success_title', 'Message sent!')}
               </h2>
               <p className="success-message">
-                Merci pour votre message. Notre équipe vous répondra dans les plus brefs délais.
+                {t('contact.success_message', 'Thank you for your message. Our team will reply as soon as possible.')}
               </p>
               <button
                 onClick={() => setSuccess(false)}
                 className="success-button"
               >
-                Envoyer un Autre Message
+                {t('contact.success_send_another', 'Send another message')}
               </button>
             </div>
           </div>
@@ -76,10 +78,10 @@ const ContactPage: React.FC = () => {
       <Header />
 
       {/* Hero Section */}
-      <section className="contact-hero-section">
+      <section className="contact-hero-section" aria-labelledby="contact-hero-title">
         <div className="contact-hero-grid" />
         
-        <div className="contact-particles-container">
+        <div className="contact-particles-container" aria-hidden>
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
@@ -95,25 +97,24 @@ const ContactPage: React.FC = () => {
 
         <div className="contact-hero-content">
           <div className="container">
-            <h1 className="contact-hero-title">
-              Contactez-Nous
+            <h1 id="contact-hero-title" className="contact-hero-title">
+              {t('contact.hero_title', 'Contact Us')}
             </h1>
             <p className="contact-hero-description">
-              Notre équipe est là pour vous accompagner dans votre parcours d'apprentissage juridique. 
-              N'hésitez pas à nous poser vos questions.
+              {t('contact.hero_description', "Our team is here to support your legal learning journey. Don't hesitate to ask us anything.")}
             </p>
           </div>
         </div>
       </section>
 
       {/* Main Contact Section */}
-      <section className="contact-main-section">
+      <section className="contact-main-section" aria-labelledby="contact-main-heading">
         <div className="container">
           <div className="contact-grid">
             
             {/* Contact Information */}
-            <div className="contact-info-section">
-              <h2 className="contact-info-title">Nos Coordonnées</h2>
+            <div className="contact-info-section" aria-hidden={false}>
+              <h2 id="contact-main-heading" className="contact-info-title">{t('contact.info_title', 'Contact information')}</h2>
               
               <div className="contact-methods">
                 {/* Email */}
@@ -122,15 +123,15 @@ const ContactPage: React.FC = () => {
                   style={{ animationDelay: '0.1s' }}
                 >
                   <div className="contact-method-content">
-                    <div className="contact-method-icon">
+                    <div className="contact-method-icon" aria-hidden>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2"/>
                         <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </div>
                     <div className="contact-method-info">
-                      <h3>Email</h3>
-                      <p>Envoyez-nous un message</p>
+                      <h3>{t('contact.method_email.title', 'Email')}</h3>
+                      <p>{t('contact.method_email.desc', 'Send us a message')}</p>
                       <div className="contact-detail">contact@cliniquejuriste.com</div>
                     </div>
                   </div>
@@ -143,14 +144,14 @@ const ContactPage: React.FC = () => {
                   style={{ animationDelay: '0.2s' }}
                 >
                   <div className="contact-method-content">
-                    <div className="contact-method-icon">
+                    <div className="contact-method-icon" aria-hidden>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </div>
                     <div className="contact-method-info">
-                      <h3>Téléphone</h3>
-                      <p>Appelez-nous directement</p>
+                      <h3>{t('contact.method_phone.title', 'Phone')}</h3>
+                      <p>{t('contact.method_phone.desc', 'Call us directly')}</p>
                       <div className="contact-detail">+216 XX XXX XXX</div>
                     </div>
                   </div>
@@ -163,16 +164,16 @@ const ContactPage: React.FC = () => {
                   style={{ animationDelay: '0.3s' }}
                 >
                   <div className="contact-method-content">
-                    <div className="contact-method-icon">
+                    <div className="contact-method-icon" aria-hidden>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" strokeWidth="2"/>
                         <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </div>
                     <div className="contact-method-info">
-                      <h3>Adresse</h3>
-                      <p>Visitez nos bureaux</p>
-                      <div className="contact-detail">Tunis, Tunisie</div>
+                      <h3>{t('contact.method_address.title', 'Address')}</h3>
+                      <p>{t('contact.method_address.desc', 'Visit our offices')}</p>
+                      <div className="contact-detail">{t('contact.method_address.detail', 'Tunis, Tunisia')}</div>
                     </div>
                   </div>
                   <div className="contact-method-glow" />
@@ -184,16 +185,16 @@ const ContactPage: React.FC = () => {
                   style={{ animationDelay: '0.4s' }}
                 >
                   <div className="contact-method-content">
-                    <div className="contact-method-icon">
+                    <div className="contact-method-icon" aria-hidden>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                         <polyline points="12,6 12,12 16,14" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </div>
                     <div className="contact-method-info">
-                      <h3>Horaires d'Ouverture</h3>
-                      <p>Nos heures de disponibilité</p>
-                      <div className="contact-detail">Lun-Ven: 9h-18h<br />Sam: 9h-13h</div>
+                      <h3>{t('contact.method_hours.title', 'Opening hours')}</h3>
+                      <p>{t('contact.method_hours.desc', 'Our availability hours')}</p>
+                      <div className="contact-detail" dangerouslySetInnerHTML={{ __html: t('contact.method_hours.detail', 'Mon-Fri: 9am-6pm<br/>Sat: 9am-1pm') }} />
                     </div>
                   </div>
                   <div className="contact-method-glow" />
@@ -202,13 +203,14 @@ const ContactPage: React.FC = () => {
             </div>
 
             {/* Contact Form */}
-            <div className="contact-form-section">
+            <div className="contact-form-section" aria-labelledby="contact-form-heading">
               <div className="contact-form-container">
+                <form onSubmit={handleSubmit} className="contact-form" noValidate>
+                  <h2 id="contact-form-heading" className="sr-only">{t('contact.form_heading', 'Contact form')}</h2>
 
-                <form onSubmit={handleSubmit} className="contact-form">
                   {error && (
-                    <div className="error-message">
-                      <div className="error-icon">
+                    <div className="error-message" role="alert" aria-live="assertive">
+                      <div className="error-icon" aria-hidden>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                           <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" strokeWidth="2"/>
@@ -222,11 +224,11 @@ const ContactPage: React.FC = () => {
                   {/* Name Field */}
                   <div className="form-group" style={{ animationDelay: '0.1s' }}>
                     <label htmlFor="name" className="form-label">
-                      <span className="label-text">Nom complet</span>
+                      <span className="label-text">{t('contact.form.name_label', 'Full name')}</span>
                       <span className="label-required">*</span>
                     </label>
                     <div className="input-wrapper">
-                      <div className="input-icon">
+                      <div className="input-icon" aria-hidden>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2"/>
                           <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
@@ -239,7 +241,8 @@ const ContactPage: React.FC = () => {
                         value={form.name}
                         onChange={(e) => handleChange('name', e.target.value)}
                         className="form-input"
-                        placeholder="Votre nom complet"
+                        placeholder={t('contact.form.name_placeholder', 'Your full name')}
+                        aria-required
                       />
                     </div>
                   </div>
@@ -247,11 +250,11 @@ const ContactPage: React.FC = () => {
                   {/* Email Field */}
                   <div className="form-group" style={{ animationDelay: '0.2s' }}>
                     <label htmlFor="email" className="form-label">
-                      <span className="label-text">Adresse e-mail</span>
+                      <span className="label-text">{t('contact.form.email_label', 'Email address')}</span>
                       <span className="label-required">*</span>
                     </label>
                     <div className="input-wrapper">
-                      <div className="input-icon">
+                      <div className="input-icon" aria-hidden>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2"/>
@@ -264,7 +267,8 @@ const ContactPage: React.FC = () => {
                         value={form.email}
                         onChange={(e) => handleChange('email', e.target.value)}
                         className="form-input"
-                        placeholder="votre@email.com"
+                        placeholder={t('contact.form.email_placeholder', 'your@email.com')}
+                        aria-required
                       />
                     </div>
                   </div>
@@ -272,11 +276,11 @@ const ContactPage: React.FC = () => {
                   {/* Subject Field */}
                   <div className="form-group" style={{ animationDelay: '0.3s' }}>
                     <label htmlFor="subject" className="form-label">
-                      <span className="label-text">Sujet</span>
+                      <span className="label-text">{t('contact.form.subject_label', 'Subject')}</span>
                       <span className="label-required">*</span>
                     </label>
                     <div className="input-wrapper">
-                      <div className="input-icon">
+                      <div className="input-icon" aria-hidden>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M9 11H5a2 2 0 0 0-2 2v3c0 1.1.9 2 2 2h5l3 3V11a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
                           <path d="M14 11V9a2 2 0 0 1 2-2h5l3-3v9a2 2 0 0 1-2 2h-1" stroke="currentColor" strokeWidth="2"/>
@@ -288,13 +292,14 @@ const ContactPage: React.FC = () => {
                         value={form.subject}
                         onChange={(e) => handleChange('subject', e.target.value)}
                         className="form-select"
+                        aria-required
                       >
-                        <option value="">Sélectionnez un sujet</option>
-                        <option value="question-generale">Question générale</option>
-                        <option value="support-technique">Support technique</option>
-                        <option value="suggestion-cours">Suggestion de cours</option>
-                        <option value="partenariat">Opportunité de partenariat</option>
-                        <option value="autre">Autre</option>
+                        <option value="">{t('contact.form.subject_placeholder', 'Select a subject')}</option>
+                        <option value="general">{t('contact.form.subjects.general', 'General question')}</option>
+                        <option value="tech">{t('contact.form.subjects.tech', 'Technical support')}</option>
+                        <option value="course">{t('contact.form.subjects.course', 'Course suggestion')}</option>
+                        <option value="partnership">{t('contact.form.subjects.partnership', 'Partnership opportunity')}</option>
+                        <option value="other">{t('contact.form.subjects.other', 'Other')}</option>
                       </select>
                     </div>
                   </div>
@@ -302,7 +307,7 @@ const ContactPage: React.FC = () => {
                   {/* Message Field */}
                   <div className="form-group" style={{ animationDelay: '0.4s' }}>
                     <label htmlFor="message" className="form-label">
-                      <span className="label-text">Votre Message</span>
+                      <span className="label-text">{t('contact.form.message_label', 'Your message')}</span>
                       <span className="label-required">*</span>
                     </label>
                     <div className="input-wrapper">
@@ -313,7 +318,8 @@ const ContactPage: React.FC = () => {
                         value={form.message}
                         onChange={(e) => handleChange('message', e.target.value)}
                         className="form-textarea"
-                        placeholder="Décrivez votre demande en détail..."
+                        placeholder={t('contact.form.message_placeholder', 'Describe your request in detail...')}
+                        aria-required
                       />
                     </div>
                   </div>
@@ -324,14 +330,15 @@ const ContactPage: React.FC = () => {
                       type="submit"
                       disabled={loading}
                       className="submit-button"
+                      aria-busy={loading}
                     >
                       {loading ? (
-                        <div className="loading-container">
+                        <div className="loading-container" aria-hidden>
                           <div className="loading-spinner"></div>
-                          Envoi en cours...
+                          <span>{t('contact.form.sending', 'Sending...')}</span>
                         </div>
                       ) : (
-                        'Envoyer le Message'
+                        t('contact.form.submit', 'Send message')
                       )}
                     </button>
                   </div>

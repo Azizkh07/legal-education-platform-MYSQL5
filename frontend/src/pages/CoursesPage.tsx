@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, getErrorMessage } from '../lib/api';
 import { videoService, Video } from '../lib/videoService';
 import VideoPreview from '../components/VideoPreview';
@@ -36,6 +37,7 @@ interface CourseWithData extends Course {
 }
 
 const CoursesPage: React.FC = () => {
+  const { t } = useTranslation();
   const [courses, setCourses] = useState<CourseWithData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -112,8 +114,7 @@ const CoursesPage: React.FC = () => {
           const professorsSet: { [key: string]: boolean } = {};
           subjectsWithVideos.forEach(s => { professorsSet[s.professor_name] = true; });
           const professors = Object.keys(professorsSet);
-          
-          // Get first video for preview
+
           const firstVideo = subjectsWithVideos.find(s => s.videos.length > 0)?.videos[0];
 
           return {
@@ -128,9 +129,9 @@ const CoursesPage: React.FC = () => {
         .filter(course => course.totalVideos > 0);
 
       setCourses(coursesWithData);
-    } catch (error) {
-      console.error('❌ Error loading courses:', error);
-      setError(getErrorMessage(error));
+    } catch (err) {
+      console.error('❌ Error loading courses:', err);
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -141,17 +142,17 @@ const CoursesPage: React.FC = () => {
     const isEnrolled = typeof courseId === 'number' ? enrolledCourseIds.has(courseId) : false;
 
     if (!isAuthenticated) {
-      navigate('/login', { 
-        state: { 
-          returnTo: `/courses?video=${video.id}`, 
-          message: 'Connectez-vous pour regarder la vidéo complète' 
+      navigate('/login', {
+        state: {
+          returnTo: `/courses?video=${video.id}`,
+          message: t('courses.login_required_message', 'Please log in to watch the full video')
         }
       });
       return;
     }
 
     if (!isEnrolled) {
-      alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+      alert(t('courses.alert_not_enrolled', "You are not enrolled in this course. Contact admin to request access."));
       return;
     }
 
@@ -168,20 +169,17 @@ const CoursesPage: React.FC = () => {
     }
 
     if (isHovering) {
-      // Clear any existing timeout for this video
       const existingTimeout = previewTimeouts.get(video.id);
       if (existingTimeout) {
         clearTimeout(existingTimeout);
       }
 
-      // Set a delay before showing preview to avoid flickering
       const timeout = setTimeout(() => {
         setHoveredVideo(video);
       }, 500);
 
       setPreviewTimeouts(new Map(previewTimeouts.set(video.id, timeout)));
     } else {
-      // Clear timeout and hide preview
       const existingTimeout = previewTimeouts.get(video.id);
       if (existingTimeout) {
         clearTimeout(existingTimeout);
@@ -213,7 +211,7 @@ const CoursesPage: React.FC = () => {
       <div className="courses-page">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p className="loading-text">Chargement des cours...</p>
+          <p className="loading-text">{t('courses.loading', 'Loading courses...')}</p>
         </div>
       </div>
     );
@@ -225,7 +223,7 @@ const CoursesPage: React.FC = () => {
         <div className="courses-container">
           <div className="empty-state">
             <div className="empty-icon">⚠️</div>
-            <h2 className="empty-title">Erreur de chargement</h2>
+            <h2 className="empty-title">{t('courses.error_title', 'Loading error')}</h2>
             <p className="empty-message">{error}</p>
           </div>
         </div>
@@ -235,14 +233,14 @@ const CoursesPage: React.FC = () => {
 
   return (
     <div className="courses-page">
-          <Header />
+      <Header />
 
       <div className="courses-container">
         {/* Page Header */}
         <div className="courses-header">
-          <h1 className="courses-title">Nos Cours</h1>
+          <h1 className="courses-title">{t('courses.page_title', 'Our Courses')}</h1>
           <p className="courses-subtitle">
-            Choisissez parmi {courses.length} cours pour faire progresser votre carrière
+            {t('courses.choose_count', 'Choose from {{count}} courses to boost your career', { count: courses.length })}
           </p>
 
           {/* Category Filter */}
@@ -254,7 +252,7 @@ const CoursesPage: React.FC = () => {
                   className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
                   onClick={() => setSelectedCategory(category)}
                 >
-                  {category === 'all' ? 'Tous les cours' : category}
+                  {category === 'all' ? t('courses.category_all', 'All courses') : category}
                 </button>
               ))}
             </div>
@@ -265,11 +263,11 @@ const CoursesPage: React.FC = () => {
         {filteredCourses.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📚</div>
-            <h2 className="empty-title">Aucun cours disponible</h2>
+            <h2 className="empty-title">{t('courses.no_courses_title', 'No courses available')}</h2>
             <p className="empty-message">
-              {selectedCategory === 'all' 
-                ? 'Nos cours arrivent bientôt. Revenez plus tard pour découvrir notre contenu.'
-                : `Aucun cours disponible dans la catégorie "${selectedCategory}".`
+              {selectedCategory === 'all'
+                ? t('courses.no_courses_message_all', 'Our courses are coming soon. Please check back later.')
+                : t('courses.no_courses_message_category', 'No courses available in the "{{category}}" category.', { category: selectedCategory })
               }
             </p>
           </div>
@@ -279,21 +277,20 @@ const CoursesPage: React.FC = () => {
               const isCourseEnrolled = enrolledCourseIds.has(course.id);
               const isExpanded = expandedCourse === course.id;
               const isHoveringThisVideo = hoveredVideo?.id === course.firstVideo?.id;
-              
+
               return (
-                <div 
-                  key={course.id} 
+                <div
+                  key={course.id}
                   className={`udemy-course-card ${isVisible ? 'animate-in' : ''}`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   {/* Course Image with Enhanced Preview */}
-                  <div 
+                  <div
                     className="course-image-container"
                     onMouseEnter={() => course.firstVideo && handleVideoHover(course.firstVideo, true)}
                     onMouseLeave={() => course.firstVideo && handleVideoHover(course.firstVideo, false)}
                   >
                     {course.firstVideo && isHoveringThisVideo && isCourseEnrolled && isAuthenticated ? (
-                      // Show video preview on hover
                       <VideoPreview
                         video={course.firstVideo}
                         maxDuration={15}
@@ -302,23 +299,22 @@ const CoursesPage: React.FC = () => {
                         onPreviewClick={() => handleVideoClick(course.firstVideo!)}
                       />
                     ) : course.firstVideo ? (
-                      // Show thumbnail
                       <VideoPreview
                         video={course.firstVideo}
-                        maxDuration={0} // Don't auto-play on load
+                        maxDuration={0}
                         showPlayButton={false}
                         className="course-image"
                         onPreviewClick={() => {
                           if (!isAuthenticated) {
-                            navigate('/login', { 
-                              state: { 
-                                returnTo: `/courses?video=${course.firstVideo?.id}` 
+                            navigate('/login', {
+                              state: {
+                                returnTo: `/courses?video=${course.firstVideo?.id}`
                               }
                             });
                             return;
                           }
                           if (!isCourseEnrolled) {
-                            alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                            alert(t('courses.alert_not_enrolled', "You are not enrolled in this course. Contact admin to request access."));
                             return;
                           }
                           if (course.firstVideo) {
@@ -338,23 +334,23 @@ const CoursesPage: React.FC = () => {
                         📚
                       </div>
                     )}
-                    
+
                     <div className="course-preview-overlay">
-                      <button 
+                      <button
                         className="preview-play-btn"
                         onClick={() => {
                           if (!course.firstVideo) return;
-                          
+
                           if (!isAuthenticated) {
-                            navigate('/login', { 
-                              state: { 
-                                returnTo: `/courses?video=${course.firstVideo.id}` 
+                            navigate('/login', {
+                              state: {
+                                returnTo: `/courses?video=${course.firstVideo.id}`
                               }
                             });
                             return;
                           }
                           if (!isCourseEnrolled) {
-                            alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                            alert(t('courses.alert_not_enrolled', "You are not enrolled in this course. Contact admin to request access."));
                             return;
                           }
                           handleVideoClick(course.firstVideo);
@@ -364,41 +360,38 @@ const CoursesPage: React.FC = () => {
                       </button>
                     </div>
 
-                    
                   </div>
 
                   {/* Course Content */}
                   <div className="udemy-course-content">
                     <h3 className="udemy-course-title">{course.title}</h3>
-                    
+
                     <div className="udemy-course-instructor">
-                      {course.professors.length > 0 ? course.professors.join(', ') : 'Instructeur'}
+                      {course.professors.length > 0 ? course.professors.join(', ') : t('courses.instructor_placeholder', 'Instructor')}
                     </div>
 
-                 
-
                     <div className="udemy-course-meta">
-                      <span>{course.totalHours} heures au total</span>
+                      <span>{t('courses.total_hours', '{{count}} hours total', { count: course.totalHours })}</span>
                       <span>•</span>
-                      <span>{course.totalVideos} cours</span>
+                      <span>{course.totalVideos} {t('courses.word_videos', 'courses')}</span>
                       <span>•</span>
-                      <span>Tous niveaux</span>
+                      <span>{t('courses.all_levels', 'All levels')}</span>
                     </div>
 
                     <div className="udemy-course-meta">
                       <span className={`enrollment-badge ${isCourseEnrolled ? 'enrolled' : 'locked'}`}>
-                        {isCourseEnrolled ? 'Inscrit ✓' : 'Connexion requise 🔒'}
+                        {isCourseEnrolled ? t('courses.enrolled', 'Enrolled ✓') : t('courses.login_required', 'Login required 🔒')}
                       </span>
                     </div>
 
                     <div className="video-stats">
-                      <span className="video-count">{course.totalVideos} vidéos</span>
-                      <button 
+                      <span className="video-count">{course.totalVideos} {t('courses.word_videos', 'videos')}</span>
+                      <button
                         className="watch-button"
                         disabled={!isCourseEnrolled}
                         onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
                       >
-                        {isExpanded ? 'Masquer' : 'Voir contenu'}
+                        {isExpanded ? t('courses.hide', 'Hide') : t('courses.view_content', 'View content')}
                       </button>
                     </div>
 
@@ -408,25 +401,25 @@ const CoursesPage: React.FC = () => {
                         {course.subjects.map((subject) => (
                           <div key={subject.id}>
                             <div className="subject-header-btn">
-                              <span>{subject.title} ({subject.videos.length} vidéos)</span>
+                              <span>{subject.title} ({subject.videos.length} {t('courses.word_videos_short', 'videos')})</span>
                               <span>{subject.hours}h</span>
                             </div>
                             <div className="subject-content">
                               {subject.videos.map((video) => (
-                                <div 
+                                <div
                                   key={video.id}
                                   className={`video-item ${!isCourseEnrolled ? 'locked' : ''}`}
                                   onClick={() => {
                                     if (!isAuthenticated) {
-                                      navigate('/login', { 
-                                        state: { 
-                                          returnTo: `/courses?video=${video.id}` 
+                                      navigate('/login', {
+                                        state: {
+                                          returnTo: `/courses?video=${video.id}`
                                         }
                                       });
                                       return;
                                     }
                                     if (!isCourseEnrolled) {
-                                      alert('Vous n\'êtes pas inscrit à ce cours. Contactez l\'administrateur pour demander un accès.');
+                                      alert(t('courses.alert_not_enrolled', "You are not enrolled in this course. Contact admin to request access."));
                                       return;
                                     }
                                     handleVideoClick(video);
@@ -440,7 +433,7 @@ const CoursesPage: React.FC = () => {
                                     </span>
                                     <span className="video-title-small">{video.title}</span>
                                   </div>
-                                  
+
                                 </div>
                               ))}
                             </div>
@@ -463,12 +456,12 @@ const CoursesPage: React.FC = () => {
             ×
           </button>
           <div className="video-player-container">
-            <ProfessionalVideoPlayer 
-              video={selectedVideo} 
-              isAuthenticated={isAuthenticated} 
-              onClose={closeVideoPlayer} 
-              className="w-full h-full" 
-              autoPlay={true} 
+            <ProfessionalVideoPlayer
+              video={selectedVideo}
+              isAuthenticated={isAuthenticated}
+              onClose={closeVideoPlayer}
+              className="w-full h-full"
+              autoPlay={true}
             />
           </div>
         </div>

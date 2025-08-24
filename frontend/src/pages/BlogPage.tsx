@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { blogService, BlogPost } from '../lib/blog';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
@@ -16,6 +17,7 @@ const containsRTL = (text?: string) => {
 };
 
 const BlogPage: React.FC = () => {
+  const { t } = useTranslation();
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ const BlogPage: React.FC = () => {
         setBlogs(fetchedBlogs);
       } catch (err) {
         console.error("Failed to fetch blogs:", err);
-        setError("Failed to load blog posts. Please try again later.");
+        setError(t('blog.error_loading', 'Failed to load blog posts. Please try again later.'));
       } finally {
         setLoading(false);
       }
@@ -39,14 +41,14 @@ const BlogPage: React.FC = () => {
 
     // Trigger animations
     setTimeout(() => setIsVisible(true), 300);
-  }, []);
+  }, [t]);
 
   // Function to format date
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
@@ -62,11 +64,11 @@ const BlogPage: React.FC = () => {
   return (
     <div className="blog-page-container">
       <Header />
-      
+
       {/* Hero Section */}
-      <section className="blog-hero-section">
+      <section className="blog-hero-section" aria-label={t('blog.hero_section', 'Blog')}>
         <div className="blog-hero-grid" />
-        
+
         <div className="blog-particles-container">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="blog-particle" />
@@ -76,20 +78,20 @@ const BlogPage: React.FC = () => {
         <div className="blog-hero-content">
           <div className="blog-hero-badge">
             <span className="blog-badge-icon">✍️</span>
-            <span className="blog-badge-text">Actualités & Conseils Juridiques</span>
+            <span className="blog-badge-text">{t('blog.hero_badge', 'News & Legal Advice')}</span>
             <div className="blog-badge-glow" />
           </div>
 
           <h1 className="blog-hero-title">
-            Derniers <span className="blog-title-highlight">Articles</span>
+            {t('blog.hero_title_prefix', 'Latest')} <span className="blog-title-highlight">{t('blog.hero_title_highlight', 'Articles')}</span>
           </h1>
 
           <p className="blog-hero-description">
-            Découvrez nos conseils d'experts, actualités juridiques et ressources pédagogiques pour rester informé des dernières évolutions du droit.
+            {t('blog.hero_description', "Discover expert tips, legal news and learning resources to stay up-to-date with the latest legal developments.")}
           </p>
         </div>
       </section>
-      
+
       {/* Main Content */}
       <main className="blog-main-content">
         <div className="blog-container">
@@ -98,11 +100,11 @@ const BlogPage: React.FC = () => {
               <p className="blog-error-text">{error}</p>
             </div>
           )}
-          
+
           {blogs.length === 0 && !error ? (
             <div className="blog-empty-state">
               <div className="blog-empty-animation">📝</div>
-              <p className="blog-empty-text">Nos articles arrivent bientôt! Revenez prochainement pour découvrir nos contenus juridiques.</p>
+              <p className="blog-empty-text">{t('blog.empty_text', 'Our articles are coming soon! Check back later for legal content.')}</p>
             </div>
           ) : (
             <div className="blog-grid">
@@ -119,17 +121,17 @@ const BlogPage: React.FC = () => {
                 const isRtl = containsRTL(`${blog.title || ''}\n${blog.excerpt || ''}\n${blog.content || ''}`);
 
                 return (
-                  <article 
-                    key={blog.id ?? index} 
+                  <article
+                    key={blog.id ?? index}
                     className={`blog-card ${isVisible ? 'animate-in' : ''} ${isRtl ? 'rtl' : ''}`}
                     style={{ animationDelay: `${index * 0.1}s` }}
                     dir={isRtl ? 'rtl' : 'ltr'}
                     lang={isRtl ? 'ar' : undefined}
                   >
                     <div className="blog-image-container">
-                      <img 
-                        src={blog.cover_image || DEFAULT_BLOG_IMAGE} 
-                        alt={blog.title} 
+                      <img
+                        src={blog.cover_image || DEFAULT_BLOG_IMAGE}
+                        alt={blog.title}
                         className="blog-image"
                         onError={(e: any) => {
                           e.currentTarget.onerror = null;
@@ -139,7 +141,7 @@ const BlogPage: React.FC = () => {
                       />
                       <div className="blog-image-overlay" />
                     </div>
-                    
+
                     <div className="blog-content">
                       <h2 className="blog-title">
                         {linkTarget ? (
@@ -150,26 +152,26 @@ const BlogPage: React.FC = () => {
                           <span className="blog-title-text">{blog.title}</span>
                         )}
                       </h2>
-                      
+
                       <div className="blog-date">
                         {formatDate(blog.created_at)}
                       </div>
-                      
+
                       <div className="blog-excerpt" style={{ textAlign: isRtl ? 'right' : 'left' }}>
                         {getExcerpt(blog.content, blog.excerpt)}
                       </div>
-                      
+
                       {linkTarget ? (
-                        <Link 
+                        <Link
                           to={linkTarget}
                           className="blog-read-more"
                         >
-                          <span>Lire la suite</span>
+                          <span>{t('blog.read_more', 'Read more')}</span>
                           <span className="blog-read-more-icon">→</span>
                         </Link>
                       ) : (
                         <div className="blog-read-more disabled" aria-disabled>
-                          <span>Article indisponible</span>
+                          <span>{t('blog.unavailable', 'Article unavailable')}</span>
                         </div>
                       )}
                     </div>
@@ -182,7 +184,7 @@ const BlogPage: React.FC = () => {
           )}
         </div>
       </main>
-      
+
     </div>
   );
 };
