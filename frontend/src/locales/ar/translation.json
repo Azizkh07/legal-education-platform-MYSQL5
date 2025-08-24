@@ -1,0 +1,29 @@
+{
+  "site_title": "عيادة الحقوقيين",
+  "logo_alt": "شعار عيادة الحقوقيين",
+  "language_switcher": "اللغة",
+  "nav": {
+    "home": "الرئيسية",
+    "courses": "الدورات",
+    "articles": "المقالات",
+    "contact": "اتصل بنا",
+    "dashboard": "لوحة التحكم",
+    "profile": "ملفي الشخصي",
+    "toggle_menu": "تبديل القائمة"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "loading": "جاري التحميل...",
+    "checking_auth": "التحقق من المصادقة...",
+    "checking_admin": "التحقق من صلاحيات الإدارة..."
+  },
+  "user": {
+    "administration": "الإدارة",
+    "logout": "تسجيل الخروج",
+    "default_name": "المستخدم",
+    "access_denied": "تم رفض الوصول",
+    "no_permission": "ليس لديك إذن للوصول إلى هذه الصفحة.",
+    "return_home": "العودة إلى الرئيسية"
+  }
+}

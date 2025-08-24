@@ -1,0 +1,12 @@
+.language-switcher {
+  display: inline-block;
+  margin: 0 6px;
+}
+.language-switcher select {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #111827;
+}

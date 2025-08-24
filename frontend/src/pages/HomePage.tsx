@@ -237,9 +237,7 @@ const HomePage: React.FC = () => {
         <div className="container">
           <div className="section-header">
             <h2 className="section-title">Pourquoi choisir Clinique des juristes</h2>
-            <p className="section-subtitle">
-              VOJO is une plateforme online software suite that combines all the tools needed to run a successful school or office.
-            </p>
+          
           </div>
 
           <div className="features-grid">

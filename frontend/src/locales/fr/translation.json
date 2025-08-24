@@ -1,0 +1,32 @@
+{
+  "site_title": "Clinique des Juristes",
+  "logo_alt": "Logo Clinique Juriste",
+  "language_switcher": "Langue",
+  "nav": {
+    "home": "Accueil",
+    "courses": "Formations",
+    "articles": "Articles",
+    "contact": "Contact",
+    "dashboard": "Tableau de bord",
+    "profile": "Mon profil",
+    "toggle_menu": "Basculer le menu"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "loading": "Chargement...",
+    "checking_auth": "Vérification de l'authentification...",
+    "checking_admin": "Vérification des droits d'administration..."
+  },
+  "user": {
+    "administration": "Administration",
+    "logout": "Déconnexion",
+    "default_name": "Utilisateur",
+    "access_denied": "Accès refusé",
+    "no_permission": "Vous n'avez pas l'autorisation d'accéder à cette page.",
+    "return_home": "Retour à l'accueil"
+  }
+}
+
+
+

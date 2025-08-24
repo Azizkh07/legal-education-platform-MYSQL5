@@ -1,0 +1,29 @@
+{
+  "site_title": "Legal Clinic",
+  "logo_alt": "Legal Clinic Logo",
+  "language_switcher": "Language",
+  "nav": {
+    "home": "Home",
+    "courses": "Courses",
+    "articles": "Articles",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "profile": "My Profile",
+    "toggle_menu": "Toggle menu"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "checking_auth": "Checking authentication...",
+    "checking_admin": "Checking admin rights..."
+  },
+  "user": {
+    "administration": "Administration",
+    "logout": "Logout",
+    "default_name": "User",
+    "access_denied": "Access Denied",
+    "no_permission": "You don't have permission to access this page.",
+    "return_home": "Return to Home"
+  }
+}
