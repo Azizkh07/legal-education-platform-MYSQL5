@@ -158,7 +158,6 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onSuccess, onCancel }) => {
     <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900">📤 Upload Video</h2>
-        <div className="text-sm text-gray-500">User: Azizkh07</div>
         {onCancel && (
           <button
             onClick={onCancel}
@@ -358,9 +357,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onSuccess, onCancel }) => {
         {uploading && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-blue-900">
-                Uploading for Azizkh07... {Math.round(uploadProgress)}%
-              </span>
+             
               <span className="text-sm text-blue-600">
                 {videoFile && `${formatFileSize(videoFile.size * uploadProgress / 100)} / ${formatFileSize(videoFile.size)}`}
               </span>
@@ -410,9 +407,7 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onSuccess, onCancel }) => {
         </div>
       </form>
       
-      <div className="text-center text-xs text-gray-500 mt-6 pt-4 border-t border-gray-200">
-        Last updated: 2025-08-19 23:11:34 | Azizkh07
-      </div>
+     
     </div>
   );
 };

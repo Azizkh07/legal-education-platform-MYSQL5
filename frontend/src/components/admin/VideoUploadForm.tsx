@@ -347,7 +347,6 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">🎬 Ajouter une Vidéo</h2>
-              <p className="text-sm text-gray-600">Azizkh07 | 2025-08-20 13:57:10</p>
             </div>
             <button
               onClick={onCancel}
