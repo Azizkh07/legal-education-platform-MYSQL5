@@ -336,12 +336,7 @@ const BlogManagement: React.FC = () => {
             <p className="text-gray-600">{selectedPost ? "Modifiez l'article" : 'Créez un nouvel article de blog'}</p>
           </div>
           <div className="flex space-x-2">
-            <button
-              onClick={testConnection}
-              className="px-3 py-2 text-xs text-blue-600 hover:text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors duration-200"
-            >
-              🔗 Test Backend
-            </button>
+         
             <button
               onClick={() => { setShowEditor(false); setSelectedPost(null); }}
               className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"

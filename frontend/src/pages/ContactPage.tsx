@@ -132,7 +132,7 @@ const ContactPage: React.FC = () => {
                     <div className="contact-method-info">
                       <h3>{t('contact.method_email.title', 'Email')}</h3>
                       <p>{t('contact.method_email.desc', 'Send us a message')}</p>
-                      <div className="contact-detail">contact@cliniquejuriste.com</div>
+                      <div className="contact-detail">cliniquedesjuristes@gmail.com</div>
                     </div>
                   </div>
                   <div className="contact-method-glow" />
@@ -152,7 +152,7 @@ const ContactPage: React.FC = () => {
                     <div className="contact-method-info">
                       <h3>{t('contact.method_phone.title', 'Phone')}</h3>
                       <p>{t('contact.method_phone.desc', 'Call us directly')}</p>
-                      <div className="contact-detail">+216 XX XXX XXX</div>
+                      <div className="contact-detail">+216 56 614 717</div>
                     </div>
                   </div>
                   <div className="contact-method-glow" />
