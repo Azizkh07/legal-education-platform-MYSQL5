@@ -1,22 +1,16 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { authService, User as AuthUser } from './auth';
 import { apiUtils, getErrorMessage } from './api';
 
-type User = {
-  id: number;
-  name?: string;
-  email?: string;
-  is_admin?: boolean;
-  isAdmin?: boolean;
-};
+type User = AuthUser;
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string, force?: boolean) => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
-  validateSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,102 +21,51 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
+    // Try to restore user from localStorage if present
     try {
-      const stored = sessionStorage.getItem('auth_user');
-      return stored ? JSON.parse(stored) as User : null;
+      const stored = apiUtils.getUserData();
+      return stored ? (stored as User) : null;
     } catch {
       return null;
     }
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const authToken = sessionStorage.getItem('token') || sessionStorage.getItem('authToken');
-    const sessionToken = sessionStorage.getItem('sessionToken');
-    return !!(authToken && sessionToken);
-  });
-
-  const validateSession = async (): Promise<boolean> => {
-    const authToken = sessionStorage.getItem('token') || sessionStorage.getItem('authToken');
-    const sessionToken = sessionStorage.getItem('sessionToken');
-    
-    if (!authToken || !sessionToken) {
-      setUser(null);
-      setIsAuthenticated(false);
-      return false;
-    }
-  
-    try {
-      const response = await fetch('/api/auth/validate-session', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.user) {
-          if (!user || user.id !== result.user.id) {
-            setUser(result.user as User);
-            sessionStorage.setItem('auth_user', JSON.stringify(result.user));
-          }
-          setIsAuthenticated(true);
-          return true;
-        }
-        // invalid according to server
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('sessionToken');
-        sessionStorage.removeItem('auth_user');
-        setUser(null);
-        setIsAuthenticated(false);
-        return false;
-      } else {
-        // HTTP error (401/403 etc.)
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('sessionToken');
-        sessionStorage.removeItem('auth_user');
-        setUser(null);
-        setIsAuthenticated(false);
-        return false;
-      }
-    } catch (error) {
-      console.error('Session validation network error:', error);
-      // keep existing tokens on network error
-      return false;
-    }
-  };
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => apiUtils.isAuthenticated());
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const authToken = sessionStorage.getItem('token') || sessionStorage.getItem('authToken');
-        const sessionToken = sessionStorage.getItem('sessionToken');
-        
-        if (authToken && sessionToken) {
-          const isValidSession = await validateSession();
-          if (!isValidSession) {
-            setUser(null);
-            setIsAuthenticated(false);
+        // If we already have a token stored, attempt to get current user from authService
+        if (apiUtils.isAuthenticated()) {
+          try {
+            const current = await authService.getCurrentUser?.();
+            if (current) {
+              setUser(current as User);
+              setIsAuthenticated(true);
+            } else {
+              // Fallback: use stored user in localStorage
+              const stored = apiUtils.getUserData();
+              if (stored) {
+                setUser(stored as User);
+                setIsAuthenticated(true);
+              }
+            }
+          } catch (err) {
+            // Could not fetch current user, clear local state but don't logout automatically
+            console.warn('Could not fetch current user on init:', err);
+            const stored = apiUtils.getUserData();
+            if (stored) {
+              setUser(stored as User);
+              setIsAuthenticated(true);
+            } else {
+              setUser(null);
+              setIsAuthenticated(false);
+            }
           }
-        } else if (authToken && !sessionToken) {
-          // cleanup legacy state
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('authToken');
-          sessionStorage.removeItem('auth_user');
-          setUser(null);
-          setIsAuthenticated(false);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
         }
       } catch (err) {
         console.error('Failed to initialize auth:', err);
-        setUser(null);
-        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -131,111 +74,83 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // login now supports force parameter (calls /auth/login or /auth/login/force)
-  const login = async (email: string, password: string, force = false): Promise<User> => {
+  /**
+   * login
+   * - Normalizes email
+   * - Calls authService.login
+   * - Throws on failure so callers (LoginPage) can handle and avoid navigation
+   * - Persists token and user via apiUtils on success
+   */
+  const login = async (email: string, password: string): Promise<User> => {
     setError(null);
     setLoading(true);
 
     try {
       const normalizedEmail = String(email).trim().toLowerCase();
-      const endpoint = force ? '/api/auth/login/force' : '/api/auth/login';
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password })
-      });
+      // Call auth service (this may throw on network error)
+      const res: any = await authService.login({ email: normalizedEmail, password });
 
-      const result = await response.json().catch(() => ({}));
-
-      if (response.status === 409) {
-        // Session conflict — caller (LoginPage) will handle showing Force option.
-        const err = new Error(result.message || 'Account already logged in elsewhere');
-        (err as any).status = 409;
-        setLoading(false);
-        throw err;
-      }
-
-      if (!response.ok || !result.success) {
-        const msg = result.message || 'Authentication failed';
+      // Handle different possible shapes of response from authService
+      // Expected successful shape: { success: true, token, user } OR { token, user }
+      if (!res) {
+        const msg = 'Authentication failed (no response)';
         setError(msg);
-        setLoading(false);
         throw new Error(msg);
       }
 
-      const token = result.token;
-      const sessionToken = result.sessionToken;
-      const userPayload = result.user;
+      // If the service returned a success flag that's false -> treat as failure
+      if (res.success === false) {
+        const msg = res.message || 'Authentication failed';
+        setError(msg);
+        throw new Error(msg);
+      }
+
+      // Ensure token and user exist
+      const token = res.token || res.data?.token;
+      const userPayload = res.user || res.data?.user || res;
 
       if (!token || !userPayload) {
-        const msg = result.message || 'Invalid response from server';
+        const msg = res.message || 'Authentication failed: invalid response from server';
         setError(msg);
-        setLoading(false);
         throw new Error(msg);
       }
 
-      // Use sessionStorage (per-tab) — this prevents cross-tab token sharing
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('authToken', token);
-      if (sessionToken) sessionStorage.setItem('sessionToken', sessionToken);
-      sessionStorage.setItem('auth_user', JSON.stringify(userPayload));
-
-      // Persist via apiUtils if you need (update apiUtils to use sessionStorage if required)
-      try { apiUtils.setAuthToken(token); apiUtils.setUserData(userPayload); } catch (e) { /* ignore */ }
+      // Persist auth data
+      try {
+        apiUtils.setAuthToken(token);
+        apiUtils.setUserData(userPayload);
+      } catch (e) {
+        console.warn('Could not persist auth data to localStorage:', e);
+      }
 
       setUser(userPayload as User);
       setIsAuthenticated(true);
       setLoading(false);
-      return userPayload as User;
 
-    } catch (err: any) {
+      return userPayload as User;
+    } catch (err) {
       const msg = getErrorMessage(err);
       setError(msg);
       setLoading(false);
-      throw err;
+      // Re-throw so callers (LoginPage) will catch and avoid navigating
+      throw new Error(msg);
     }
   };
 
-  const logout = async () => {
+  const logout = () => {
     try {
-      const authToken = sessionStorage.getItem('token') || sessionStorage.getItem('authToken');
-      if (authToken) {
-        try {
-          await fetch('/api/auth/logout', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' }
-          });
-        } catch (err) {
-          console.warn('Logout API failed, proceeding to clear local session');
-        }
-      }
-
-      try { apiUtils.removeAuthToken(); } catch { /* ignore */ }
-
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('sessionToken');
-      sessionStorage.removeItem('auth_user');
-
-      setUser(null);
-      setIsAuthenticated(false);
-      setError(null);
+      apiUtils.removeAuthToken();
+    } catch (e) {
+      console.warn('Error clearing auth token:', e);
     }
+    setUser(null);
+    setIsAuthenticated(false);
+    setError(null);
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      error,
-      login,
-      logout,
-      isAuthenticated,
-      validateSession
-    }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
@@ -243,6 +158,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 export const useAuth = (): AuthContextType => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return ctx;
 };

@@ -1,4 +1,3 @@
-// middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { pool } from '../database';
@@ -24,119 +23,30 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
-    // ============ SINGLE SESSION VALIDATION ============
-    
-    // Check if the session token exists and is still active
-    const sessionQuery = `
-      SELECT s.id, s.user_id, s.session_token, s.is_active, s.expires_at,
-             u.email, u.is_admin, u.is_approved, u.name
-      FROM user_sessions s
-      JOIN users u ON s.user_id = u.id
-      WHERE s.user_id = $1 AND s.session_token = $2 AND s.jwt_token = $3
-    `;
-    
-    // Your JWT structure uses decoded.id and decoded.sessionToken
-    const sessionResult = await pool.query(sessionQuery, [
-      decoded.id, 
-      decoded.sessionToken,
-      token
-    ]);
-
-    if (sessionResult.rows.length === 0) {
-      console.warn('[auth] Session not found in database for user:', decoded.id);
-      return res.status(401).json({ 
-        error: 'Invalid session. Please log in again.',
-        code: 'SESSION_NOT_FOUND'
-      });
-    }
-
-    const session = sessionResult.rows[0];
-
-    // Check if session is active
-    if (!session.is_active) {
-      console.warn('[auth] Session is not active for user:', decoded.id);
-      return res.status(401).json({ 
-        error: 'Session terminated. Please log in again.',
-        code: 'SESSION_INACTIVE'
-      });
-    }
-
-    // Check if session has expired
-    if (new Date() > new Date(session.expires_at)) {
-      console.warn('[auth] Session has expired for user:', decoded.id);
-      
-      // Mark session as inactive
-      await pool.query(
-        'UPDATE user_sessions SET is_active = false WHERE id = $1',
-        [session.id]
-      );
-      
-      return res.status(401).json({ 
-        error: 'Session expired. Please log in again.',
-        code: 'SESSION_EXPIRED'
-      });
-    }
-
-    // Check if user is still approved
-    if (!session.is_approved) {
-      console.warn('[auth] User not approved:', decoded.id);
-      
-      // Deactivate session for unapproved users
-      await pool.query(
-        'UPDATE user_sessions SET is_active = false WHERE user_id = $1',
-        [session.user_id]
-      );
-      
-      return res.status(403).json({ 
-        error: 'User not approved',
-        code: 'USER_NOT_APPROVED'
-      });
-    }
-
-    // ============ SESSION IS VALID ============
-    
     // Attach user info to request for downstream handlers
-    (req as any).user = {
-      id: session.user_id,
-      email: session.email,
-      isAdmin: session.is_admin || false,
-      is_admin: session.is_admin || false,
-      name: session.name,
-      sessionToken: session.session_token
-    };
+    (req as any).user = decoded;
 
-    // Update last_accessed timestamp
-    await pool.query(
-      'UPDATE user_sessions SET last_accessed = NOW() WHERE id = $1',
-      [session.id]
-    );
+    // Validate user exists and is approved
+    try {
+      const result = await pool.query('SELECT id, email, is_admin, is_approved FROM users WHERE id = $1', [decoded.id]);
+      if (!result.rows.length) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      if (!result.rows[0].is_approved) {
+        return res.status(403).json({ error: 'User not approved' });
+      }
+    } catch (dbErr) {
+      console.error('[auth] DB check error:', dbErr);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
 
     next();
-
   } catch (err: any) {
-    console.warn('[auth] JWT/DB error:', err && err.name ? err.name : err);
-    
+    console.warn('[auth] JWT error:', err && err.name ? err.name : err);
     if (err?.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        error: 'Token expired. Please log in again.',
-        code: 'JWT_EXPIRED'
-      });
+      return res.status(401).json({ error: 'Token expired. Please log in again.' });
     }
-    
-    if (err?.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        error: 'Invalid token format',
-        code: 'JWT_INVALID'
-      });
-    }
-    
-    // Database or other errors
-    console.error('[auth] Unexpected error:', err);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
-    });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
 

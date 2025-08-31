@@ -45,51 +45,32 @@ const LoginPage: React.FC = () => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
   };
 
- // Replace your existing handleSubmit function in LoginPage.tsx with this:
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError(null);
+    try {
+      console.log('🔐 Login attempt with:', { email: credentials.email, passwordLength: credentials.password.length });
+      const user = await login(credentials.email, credentials.password); // will throw if failed
 
-  try {
-    console.log('🔐 Login attempt with:', { email: credentials.email, passwordLength: credentials.password.length });
-    
-    // The login function will now handle session tokens automatically
-    const user = await login(credentials.email, credentials.password);
+      console.log('✅ Login successful, user:', user);
 
-    console.log('✅ Login successful, user:', user);
+      // Navigate based on role
+      if (user?.is_admin) {
+        navigate('/admin');
+        return;
+      }
 
-    // Check if this login terminated another session
-    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
-    const sessionToken = localStorage.getItem('sessionToken');
-    
-    if (authToken && sessionToken) {
-      console.log('🎫 Session tokens confirmed after login');
-    }
-
-    // Navigate based on role
-    if (user?.is_admin) {
-      navigate('/admin');
-      return;
-    }
-
-    // Regular user -> redirect path
-    navigate(redirectPath);
-    
-  } catch (err: any) {
-    console.error('❌ Login error:', err);
-    
-    // Handle specific session-related errors
-    if (err.message?.includes('session') || err.message?.includes('Session')) {
-      setError('Erreur de session. Une autre session était peut-être active.');
-    } else {
+      // Regular user -> redirect path
+      navigate(redirectPath);
+    } catch (err) {
+      console.error('❌ Login error:', err);
       setError(err instanceof Error ? err.message : t('auth.login.error_default', 'Login failed. Please check your credentials.'));
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const displayError = error || authError;
 
@@ -223,13 +204,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                         <span className="divider-text">{t('auth.login.new_here', 'New here?')}</span>
                       </div>
 
-                      <div className="signup-text">
-  <span>{t('auth.login.no_account', "Don't have an account?")}{' '}</span>
-  <Link to="/contact" className="signup-link">
-    <span>{t('auth.login.contact_us', 'Contact us')}</span>
-    <div className="link-underline" />
-  </Link>
-</div>
+                      <p className="signup-text">
+                        {t('auth.login.no_account', "Don't have an account?")}{' '}
+                        <Link to="/contact" className="signup-link">
+                          <span>{t('auth.login.contact_us', 'Contact us')}</span>
+                          <div className="link-underline" />
+                        </Link>
+                      </p>
                     </div>
                   </div>
                 </div>
