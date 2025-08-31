@@ -9,6 +9,7 @@ const Header: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,7 +21,31 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = async () => {
-    try { await logout(); navigate('/'); } catch (err) { console.error(err); }
+    if (isLoggingOut) return; // Prevent double-clicking
+    
+    setIsLoggingOut(true);
+    
+    try {
+      console.log('🚪 Header: Starting logout process');
+      await logout(); // This will properly terminate the session on server
+      
+      console.log('✅ Header: Logout successful, navigating to home');
+      navigate('/'); // Navigate to home after successful logout
+      
+    } catch (err) {
+      console.error('❌ Header: Logout error:', err);
+      
+      // Force logout even if there's an error
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('sessionToken');
+      
+      // Navigate to login page as fallback
+      navigate('/login');
+    } finally {
+      setIsLoggingOut(false);
+      setIsMenuOpen(false); // Close mobile menu if open
+    }
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -55,11 +80,20 @@ const Header: React.FC = () => {
               <div className="dropdown-menu" role="menu">
                 {user?.is_admin && <Link to="/admin" className="dropdown-item">{t('header.admin', 'Administration')}</Link>}
                 <hr style={{ margin: '8px 0', border: '1px solid rgba(34, 197, 94, 0.1)' }} />
-                <button onClick={handleLogout} className="dropdown-item">{t('auth.logout', 'Déconnexion')}</button>
+                <button 
+                  onClick={handleLogout} 
+                  className="dropdown-item"
+                  disabled={isLoggingOut}
+                  style={{ 
+                    opacity: isLoggingOut ? 0.6 : 1,
+                    cursor: isLoggingOut ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isLoggingOut ? t('auth.logging_out', 'Déconnexion...') : t('auth.logout', 'Déconnexion')}
+                </button>
               </div>
             </div>
           ) : (
-            // Use the nested key for the login button to avoid returning an object
             <Link to="/login" className="login-button">{t('auth.login.submit', 'Connexion')}</Link>
           )}
         </nav>
@@ -87,7 +121,21 @@ const Header: React.FC = () => {
             <Link to="/dashboard" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.dashboard', 'Tableau de bord')}</Link>
             <Link to="/profile" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.profile', 'Mon profil')}</Link>
             {user?.is_admin && <Link to="/admin" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.admin', 'Administration')}</Link>}
-            <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="mobile-nav-link" style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}>{t('auth.logout', 'Déconnexion')}</button>
+            <button 
+              onClick={() => { handleLogout(); setIsMenuOpen(false); }} 
+              className="mobile-nav-link" 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                width: '100%', 
+                textAlign: 'left',
+                opacity: isLoggingOut ? 0.6 : 1,
+                cursor: isLoggingOut ? 'not-allowed' : 'pointer'
+              }}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? t('auth.logging_out', 'Déconnexion...') : t('auth.logout', 'Déconnexion')}
+            </button>
           </>
         ) : (
           <Link to="/login" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('auth.login.submit', 'Connexion')}</Link>

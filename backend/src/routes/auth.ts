@@ -1,113 +1,120 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { pool } from '../database';
 
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-// Make token lifetime configurable; longer in development for convenience
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || (process.env.NODE_ENV === 'production' ? '1h' : '7d');
 
-// Login route that matches your database structure
+// Helper function to generate unique session token
+const generateSessionToken = (): string => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+// Helper function to calculate expiry date
+const getExpiryDate = (): Date => {
+  const now = new Date();
+  const expiryTime = JWT_EXPIRES_IN;
+  
+  if (expiryTime.endsWith('d')) {
+    const days = parseInt(expiryTime.replace('d', ''));
+    now.setDate(now.getDate() + days);
+  } else if (expiryTime.endsWith('h')) {
+    const hours = parseInt(expiryTime.replace('h', ''));
+    now.setHours(now.getHours() + hours);
+  } else if (expiryTime.endsWith('m')) {
+    const minutes = parseInt(expiryTime.replace('m', ''));
+    now.setMinutes(now.getMinutes() + minutes);
+  } else {
+    // Default to 1 hour
+    now.setHours(now.getHours() + 1);
+  }
+  
+  return now;
+};
+
+// Login route with single session enforcement
+// (only the login handler is shown here — replace the login handler in your existing file)
 router.post('/login', async (req, res) => {
   try {
     let { email, password } = req.body;
-
-    console.log('🔐 Login attempt received');
-    // Normalize input
     email = typeof email === 'string' ? email.trim().toLowerCase() : email;
-    console.log('🔍 Normalized email:', email);
 
-    // Validate input
     if (!email || !password) {
-      console.log('❌ Missing email or password');
-      return res.status(400).json({
-        success: false,
-        message: 'Email et mot de passe requis'
-      });
+      return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
     }
 
-    // Query only the columns that exist in your table and include is_approved
-    const userQuery = 'SELECT id, name, email, password, is_admin, is_approved, created_at FROM users WHERE lower(trim(email)) = $1';
+    const userQuery = 'SELECT id, name, email, password, is_admin, is_approved FROM users WHERE lower(trim(email)) = $1';
     const userResult = await pool.query(userQuery, [email]);
 
-    console.log('📊 Database query result:', {
-      rowCount: userResult.rowCount,
-      foundUser: !!userResult.rows[0]
-    });
-
     if (userResult.rows.length === 0) {
-      console.log('❌ User not found in database for email:', email);
-      // 401 for invalid credentials (do not reveal which)
-      return res.status(401).json({
-        success: false,
-        message: 'Identifiants invalides'
-      });
+      return res.status(401).json({ success: false, message: 'Identifiants invalides' });
     }
 
     const user = userResult.rows[0];
-    console.log('👤 Found user:', {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      is_admin: user.is_admin,
-      is_approved: user.is_approved,
-      hasPassword: !!user.password,
-      passwordLength: user.password ? user.password.length : 0
-    });
-
-    // Block login if account not approved
     if (!user.is_approved) {
-      console.log('⛔ Login blocked - account not approved for user id:', user.id);
-      return res.status(403).json({
+      return res.status(403).json({ success: false, message: 'Compte non approuvé' });
+    }
+
+    const isValid = user.password ? await bcrypt.compare(password, user.password) : false;
+    if (!isValid) {
+      return res.status(401).json({ success: false, message: 'Identifiants invalides' });
+    }
+
+    // === SINGLE-SESSION (BLOCK NEW LOGIN) LOGIC ===
+    // If an active session exists for this user, return 409 WITHOUT creating a new session.
+    const activeSessionQuery = `
+      SELECT id, session_token, expires_at 
+      FROM user_sessions 
+      WHERE user_id = $1 AND is_active = true AND expires_at > NOW()
+      LIMIT 1
+    `;
+    const activeSessionResult = await pool.query(activeSessionQuery, [user.id]);
+
+    if (activeSessionResult.rows.length > 0) {
+      // Active session exists - block new login
+      return res.status(409).json({
         success: false,
-        message: 'Compte non approuvé. Veuillez demander l\'approbation à un administrateur.'
+        message: 'Account already logged in elsewhere',
+        code: 'SESSION_CONFLICT'
       });
     }
 
-    // Check password
-    let isPasswordValid = false;
-    if (user.password) {
-      try {
-        isPasswordValid = await bcrypt.compare(password, user.password);
-        console.log('🔐 Password comparison result:', isPasswordValid);
-      } catch (err) {
-        console.error('❌ Password compare error:', err);
-        // fallback plain-text match only for emergency debugging (NOT recommended)
-        if (user.password === password) {
-          console.warn('⚠️ Plain text password matched (insecure fallback)');
-          isPasswordValid = true;
-        }
-      }
-    } else {
-      console.log('❌ User has no password in DB for id:', user.id);
-    }
+    // No active session: proceed to create session (same as before)
+    const sessionToken = generateSessionToken();
+    const expiryDate = getExpiryDate();
 
-    if (!isPasswordValid) {
-      console.log('❌ Invalid password for user id:', user.id);
-      return res.status(401).json({
-        success: false,
-        message: 'Identifiants invalides'
-      });
-    }
-
-    // Generate JWT token using configurable expiry
-    const token = jwt.sign(
+    const jwtToken = jwt.sign(
       {
         id: user.id,
         email: user.email,
-        isAdmin: user.is_admin || false
+        isAdmin: user.is_admin || false,
+        sessionToken: sessionToken
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    console.log('✅ Login successful for user id:', user.id, 'expiresIn:', JWT_EXPIRES_IN);
+    const insertSessionQuery = `
+      INSERT INTO user_sessions (user_id, session_token, jwt_token, expires_at, is_active)
+      VALUES ($1, $2, $3, $4, true)
+      RETURNING id
+    `;
 
-    res.json({
+    await pool.query(insertSessionQuery, [
+      user.id,
+      sessionToken,
+      jwtToken,
+      expiryDate
+    ]);
+
+    return res.json({
       success: true,
-      token,
+      token: jwtToken,
+      sessionToken: sessionToken,
       user: {
         id: user.id,
         name: user.name,
@@ -119,16 +126,136 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur'
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// Logout route to properly terminate session
+router.post('/logout', async (req, res) => {
+  try {
+    const header = (req.headers['authorization'] as string) || (req.headers['x-access-token'] as string);
+    
+    if (!header) {
+      return res.status(400).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    const parts = header.split(' ');
+    let token = header;
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      token = parts[1];
+    }
+
+    // Decode token to get user info
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Deactivate session
+    await pool.query(
+      'UPDATE user_sessions SET is_active = false WHERE user_id = $1 AND session_token = $2',
+      [decoded.id, decoded.sessionToken]
+    );
+
+    console.log('✅ Logout successful for user id:', decoded.id);
+    
+    res.json({
+      success: true,
+      message: 'Déconnexion réussie'
+    });
+
+  } catch (error) {
+    console.error('❌ Logout error:', error);
+    // Even if there's an error, we should allow logout
+    res.json({
+      success: true,
+      message: 'Déconnexion réussie'
     });
   }
 });
 
-// Admin helper: reset password for any user (POST /api/auth/reset-password-admin)
-// Body: { email: string, newPassword?: string }
-// NOTE: This route is not protected in this snippet. In production you should protect it (e.g. admin-only).
+// Session validation route
+router.get('/validate-session', async (req, res) => {
+  try {
+    const header = (req.headers['authorization'] as string) || (req.headers['x-access-token'] as string);
+    
+    if (!header) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    const parts = header.split(' ');
+    let token = header;
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      token = parts[1];
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Check if session is still active
+    const sessionQuery = `
+      SELECT s.*, u.name, u.email, u.is_admin, u.is_approved
+      FROM user_sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.user_id = $1 AND s.session_token = $2 AND s.is_active = true AND s.expires_at > NOW()
+    `;
+    
+    const sessionResult = await pool.query(sessionQuery, [decoded.id, decoded.sessionToken]);
+    
+    if (sessionResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session invalide ou expirée'
+      });
+    }
+
+    const session = sessionResult.rows[0];
+    
+    res.json({
+      success: true,
+      user: {
+        id: session.user_id,
+        name: session.name,
+        email: session.email,
+        isAdmin: session.is_admin || false,
+        is_admin: session.is_admin || false
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Session validation error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Session invalide'
+    });
+  }
+});
+
+// Clean up expired sessions (call this periodically)
+router.delete('/cleanup-sessions', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM user_sessions WHERE expires_at < NOW() OR is_active = false'
+    );
+    
+    console.log('🧹 Cleaned up', result.rowCount, 'expired sessions');
+    
+    res.json({
+      success: true,
+      message: `Cleaned up ${result.rowCount} expired sessions`
+    });
+  } catch (error) {
+    console.error('❌ Session cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du nettoyage des sessions'
+    });
+  }
+});
+
+// Admin helper: reset password for any user
 router.post('/reset-password-admin', async (req, res) => {
   try {
     let { email, newPassword } = req.body;
@@ -146,6 +273,9 @@ router.post('/reset-password-admin', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
 
+    // Terminate all active sessions for this user when password is reset
+    await pool.query('UPDATE user_sessions SET is_active = false WHERE user_id = $1', [result.rows[0].id]);
+
     console.log('🔧 Password reset for user:', result.rows[0]);
     res.json({
       success: true,
@@ -162,7 +292,7 @@ router.post('/reset-password-admin', async (req, res) => {
   }
 });
 
-// Debug route: list all users (keeps existing behavior)
+// Debug route: list all users
 router.get('/debug-users', async (req, res) => {
   try {
     console.log('🔍 Listing users (debug)');
