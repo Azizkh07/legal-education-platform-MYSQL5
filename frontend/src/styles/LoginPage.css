@@ -356,7 +356,16 @@
   .login-form-container.animate-in {
     animation: slide-in-from-right 1.2s ease-out forwards;
   }
-  
+  /* Add this to your existing LoginPage.css file */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
   /* Login Header - Same style as hero badge and title */
   .login-badge {
     position: relative;
