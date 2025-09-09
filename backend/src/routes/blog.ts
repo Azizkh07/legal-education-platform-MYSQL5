@@ -1,5 +1,5 @@
 import express from 'express';
-import { pool } from '../database';
+import { query } from '../database';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import multer from 'multer';
 import path from 'path';
@@ -7,7 +7,9 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'legal-education-platform-super-secret-key-medsaidabidi02-2025-mysql5-version';
+
+console.log('📝 FIXED Blog API loaded for Medsaidabidi02 - 2025-09-09 15:15:29');
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
@@ -15,12 +17,15 @@ const storage = multer.diskStorage({
     const uploadDir = 'uploads/blog';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`📁 Created blog upload directory: ${uploadDir} for Medsaidabidi02`);
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, 'blog-' + uniqueSuffix + path.extname(file.originalname));
+    const filename = 'blog-' + uniqueSuffix + path.extname(file.originalname);
+    console.log(`📝 Generated blog image filename for Medsaidabidi02: ${filename}`);
+    cb(null, filename);
   }
 });
 
@@ -32,7 +37,11 @@ const upload = multer({
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
-    if (mimetype && extname) return cb(null, true);
+    if (mimetype && extname) {
+      console.log(`✅ Blog image file validated for Medsaidabidi02: ${file.originalname}`);
+      return cb(null, true);
+    }
+    console.log(`❌ Invalid blog image file for Medsaidabidi02: ${file.originalname}`);
     cb(new Error('Only image files are allowed!'));
   }
 });
@@ -51,20 +60,12 @@ const generateSlug = (title: string): string => {
 
 /**
  * GET /api/blog
- *
- * Behavior:
- * - public visitors (no token) -> returns only published posts
- * - if query param published=false -> requires authentication:
- *     - admins see all drafts
- *     - regular users see only their own drafts
- * - if no published param and request is authenticated:
- *     - admin: sees ALL posts (published + drafts)
- *     - regular user: sees published posts + their own drafts
- *
- * Also supports optional ?search=term to search title/content.
+ * Public endpoint with authentication-aware behavior
  */
 router.get('/', async (req, res) => {
   try {
+    console.log('📋 GET /api/blog - Fetching posts for Medsaidabidi02 at 2025-09-09 15:15:29');
+    
     const publishedParam = typeof req.query.published === 'string' ? req.query.published : undefined;
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : null;
 
@@ -78,7 +79,7 @@ router.get('/', async (req, res) => {
         if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') token = parts[1];
         const decoded: any = jwt.verify(token, JWT_SECRET);
         // fetch fresh user info from DB to get is_admin flag and existence
-        const ures = await pool.query('SELECT id, is_admin, is_approved FROM users WHERE id = $1', [decoded.id]);
+        const ures = await query('SELECT id, is_admin, is_approved FROM users WHERE id = ?', [decoded.id]);
         if (ures.rows.length) {
           user = {
             id: ures.rows[0].id,
@@ -89,7 +90,7 @@ router.get('/', async (req, res) => {
       }
     } catch (e) {
       // invalid/expired token -> treat as unauthenticated; do not throw here
-      console.warn('[blog] optional token decode failed - treating as unauthenticated');
+      console.warn('[blog] optional token decode failed - treating as unauthenticated for Medsaidabidi02');
       user = null;
     }
 
@@ -103,11 +104,9 @@ router.get('/', async (req, res) => {
       if (user.is_admin) {
         const clauses: string[] = ['bp.published = false'];
         const values: any[] = [];
-        let idx = 1;
         if (search) {
-          clauses.push(`(bp.title ILIKE $${idx} OR bp.content ILIKE $${idx})`);
-          values.push(`%${search}%`);
-          idx++;
+          clauses.push('(bp.title LIKE ? OR bp.content LIKE ?)');
+          values.push(`%${search}%`, `%${search}%`);
         }
         const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
         const sql = `
@@ -117,19 +116,18 @@ router.get('/', async (req, res) => {
           ${where}
           ORDER BY bp.created_at DESC
         `;
-        const result = await pool.query(sql, values);
+        const result = await query(sql, values);
+        console.log(`✅ Found ${result.rows.length} draft posts for admin Medsaidabidi02`);
         return res.json({ success: true, posts: result.rows });
       }
 
       // Regular user: only their own drafts
       const values: any[] = [user.id];
-      let idx = 2;
-      const clauses = ['bp.published = false', `bp.author_id = $1`];
+      const clauses = ['bp.published = false', 'bp.author_id = ?'];
 
       if (search) {
-        clauses.push(`(bp.title ILIKE $${idx} OR bp.content ILIKE $${idx})`);
-        values.push(`%${search}%`);
-        idx++;
+        clauses.push('(bp.title LIKE ? OR bp.content LIKE ?)');
+        values.push(`%${search}%`, `%${search}%`);
       }
 
       const where = `WHERE ${clauses.join(' AND ')}`;
@@ -140,17 +138,14 @@ router.get('/', async (req, res) => {
         ${where}
         ORDER BY bp.created_at DESC
       `;
-      const result = await pool.query(sql, values);
+      const result = await query(sql, values);
+      console.log(`✅ Found ${result.rows.length} own draft posts for user ${user.id} Medsaidabidi02`);
       return res.json({ success: true, posts: result.rows });
     }
 
     // For published=true or no param:
-    // - if no token -> only published
-    // - if token && admin -> all posts
-    // - if token && regular user -> published OR their own drafts
     const clauses: string[] = [];
     const values: any[] = [];
-    let idx = 1;
 
     if (publishedParam === 'true') {
       clauses.push('bp.published = true');
@@ -162,16 +157,14 @@ router.get('/', async (req, res) => {
         // admin: no published clause (sees all)
       } else {
         // regular authenticated: show published OR their own posts
-        clauses.push(`(bp.published = true OR bp.author_id = $${idx})`);
+        clauses.push('(bp.published = true OR bp.author_id = ?)');
         values.push(user.id);
-        idx++;
       }
     }
 
     if (search) {
-      clauses.push(`(bp.title ILIKE $${idx} OR bp.content ILIKE $${idx})`);
-      values.push(`%${search}%`);
-      idx++;
+      clauses.push('(bp.title LIKE ? OR bp.content LIKE ?)');
+      values.push(`%${search}%`, `%${search}%`);
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -182,46 +175,49 @@ router.get('/', async (req, res) => {
       ${where}
       ORDER BY bp.created_at DESC
     `;
-    const result = await pool.query(sql, values);
+    const result = await query(sql, values);
 
+    console.log(`✅ Found ${result.rows.length} blog posts for Medsaidabidi02`);
     return res.json({ success: true, posts: result.rows });
   } catch (error) {
-    console.error('❌ Error fetching posts:', error);
+    console.error('❌ Error fetching posts for Medsaidabidi02:', error);
     res.status(500).json({ success: false, error: 'Error fetching posts' });
   }
 });
 
 // GET /api/blog/drafts - Get drafts visible to the caller
-// - Admins see all drafts
-// - Regular authenticated users see only their own drafts
 router.get('/drafts', authenticateToken, async (req, res) => {
   try {
+    console.log('📋 GET /api/blog/drafts - Fetching drafts for Medsaidabidi02 at 2025-09-09 15:15:29');
+    
     const user = (req as any).user;
     if (!user || !user.id) {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
     if (user.is_admin || user.isAdmin) {
-      const result = await pool.query(`
+      const result = await query(`
         SELECT bp.*, u.name as author_name
         FROM blog_posts bp
         LEFT JOIN users u ON bp.author_id = u.id
         WHERE bp.published = false
         ORDER BY bp.created_at DESC
       `);
+      console.log(`✅ Found ${result.rows.length} draft posts for admin Medsaidabidi02`);
       return res.json({ success: true, posts: result.rows });
     } else {
-      const result = await pool.query(`
+      const result = await query(`
         SELECT bp.*, u.name as author_name
         FROM blog_posts bp
         LEFT JOIN users u ON bp.author_id = u.id
-        WHERE bp.published = false AND bp.author_id = $1
+        WHERE bp.published = false AND bp.author_id = ?
         ORDER BY bp.created_at DESC
       `, [user.id]);
+      console.log(`✅ Found ${result.rows.length} own draft posts for user ${user.id} Medsaidabidi02`);
       return res.json({ success: true, posts: result.rows });
     }
   } catch (error) {
-    console.error('❌ Error fetching drafts:', error);
+    console.error('❌ Error fetching drafts for Medsaidabidi02:', error);
     res.status(500).json({ success: false, error: 'Error fetching drafts' });
   }
 });
@@ -229,36 +225,43 @@ router.get('/drafts', authenticateToken, async (req, res) => {
 // GET /api/blog/admin/stats - Get blog statistics (Admin only)
 router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const stats = await pool.query(`
-      SELECT 
-        COUNT(*) as total_posts,
-        COUNT(*) FILTER (WHERE published = true) as published_posts,
-        COUNT(*) FILTER (WHERE published = false) as draft_posts,
-        COUNT(DISTINCT author_id) as total_authors
-      FROM blog_posts
-    `);
+    console.log('📊 GET /api/blog/admin/stats - Fetching stats for admin Medsaidabidi02 at 2025-09-09 15:15:29');
+    
+    const [totalPosts, publishedPosts, draftPosts, totalAuthors] = await Promise.all([
+      query('SELECT COUNT(*) as total_posts FROM blog_posts'),
+      query('SELECT COUNT(*) as published_posts FROM blog_posts WHERE published = true'),
+      query('SELECT COUNT(*) as draft_posts FROM blog_posts WHERE published = false'),
+      query('SELECT COUNT(DISTINCT author_id) as total_authors FROM blog_posts')
+    ]);
 
-    res.json({
-      success: true,
-      stats: stats.rows[0]
-    });
+    const stats = {
+      total_posts: parseInt(totalPosts.rows[0].total_posts),
+      published_posts: parseInt(publishedPosts.rows[0].published_posts),
+      draft_posts: parseInt(draftPosts.rows[0].draft_posts),
+      total_authors: parseInt(totalAuthors.rows[0].total_authors)
+    };
+
+    console.log('✅ Blog stats calculated for admin Medsaidabidi02:', stats);
+    res.json({ success: true, stats });
   } catch (error) {
-    console.error('❌ Error fetching blog stats:', error);
+    console.error('❌ Error fetching blog stats for Medsaidabidi02:', error);
     res.status(500).json({ success: false, error: 'Error fetching blog stats' });
   }
 });
 
-// GET /api/blog/:id - Get single blog post (published or draft if caller has access)
+// GET /api/blog/:id - Get single blog post
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user; // may be undefined if token absent -> but authenticateToken will block, keep for safety
+    console.log(`📋 GET /api/blog/${id} - Fetching single post for Medsaidabidi02 at 2025-09-09 15:15:29`);
+    
+    const user = (req as any).user;
 
-    const result = await pool.query(`
+    const result = await query(`
       SELECT bp.*, u.name as author_name
       FROM blog_posts bp
       LEFT JOIN users u ON bp.author_id = u.id
-      WHERE bp.id = $1
+      WHERE bp.id = ?
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -273,21 +276,24 @@ router.get('/:id', authenticateToken, async (req, res) => {
       }
     }
 
+    console.log(`✅ Found blog post ${id} for Medsaidabidi02`);
     res.json({ success: true, post });
   } catch (error) {
-    console.error('❌ Error fetching blog post:', error);
+    console.error(`❌ Error fetching blog post ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ success: false, error: 'Error fetching blog post' });
   }
 });
 
-// POST /api/blog - Create new blog post (any authenticated user can create; defaults to draft)
-// If the client sets published=true it's accepted (authors may publish their own posts).
+// POST /api/blog - Create new blog post
 router.post('/', authenticateToken, upload.single('cover_image'), async (req, res) => {
   try {
-    console.log('✅ Blog POST / route called');
+    console.log('➕ POST /api/blog - Creating new post for Medsaidabidi02 at 2025-09-09 15:15:29');
+    
     const { title, content, excerpt } = req.body;
     let published = req.body?.published === 'true' || req.body?.published === true ? true : false;
     const author_id = (req as any).user.id;
+
+    console.log('📝 Blog post data for Medsaidabidi02:', { title, published, author_id });
 
     if (!title || !content) {
       return res.status(400).json({ success: false, error: 'Title and content are required' });
@@ -298,7 +304,7 @@ router.post('/', authenticateToken, upload.single('cover_image'), async (req, re
     let slug = baseSlug;
     let counter = 1;
     while (true) {
-      const existingSlug = await pool.query('SELECT id FROM blog_posts WHERE slug = $1', [slug]);
+      const existingSlug = await query('SELECT id FROM blog_posts WHERE slug = ?', [slug]);
       if (existingSlug.rows.length === 0) break;
       slug = `${baseSlug}-${counter++}`;
     }
@@ -307,33 +313,39 @@ router.post('/', authenticateToken, upload.single('cover_image'), async (req, re
     let cover_image = null;
     if (req.file) {
       cover_image = `/uploads/blog/${req.file.filename}`;
+      console.log(`📸 Blog cover image uploaded for Medsaidabidi02: ${cover_image}`);
     }
 
-    const result = await pool.query(`
+    const result = await query(`
       INSERT INTO blog_posts (title, slug, content, excerpt, cover_image, published, author_id, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-      RETURNING *
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
     `, [title, slug, content, excerpt, cover_image, published, author_id]);
 
+    // Get the created post
+    const createdPost = await query('SELECT * FROM blog_posts WHERE id = ?', [result.insertId]);
+
+    console.log('✅ Blog post created successfully for Medsaidabidi02:', createdPost.rows[0]);
     res.status(201).json({
       success: true,
       message: 'Blog post created successfully',
-      post: result.rows[0]
+      post: createdPost.rows[0]
     });
   } catch (error: any) {
-    console.error('❌ Error creating blog post:', error);
+    console.error('❌ Error creating blog post for Medsaidabidi02:', error);
     res.status(500).json({ success: false, error: 'Error creating blog post', details: error.message });
   }
 });
 
-// PUT /api/blog/:id - Update blog post (author or admin)
+// PUT /api/blog/:id - Update blog post
 router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`🔄 PUT /api/blog/${id} - Updating post for Medsaidabidi02 at 2025-09-09 15:15:29`);
+    
     const user = (req as any).user;
 
     // Check if post exists
-    const existingPost = await pool.query('SELECT * FROM blog_posts WHERE id = $1', [id]);
+    const existingPost = await query('SELECT * FROM blog_posts WHERE id = ?', [id]);
     if (existingPost.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Blog post not found' });
     }
@@ -354,10 +366,9 @@ router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, 
 
     let updateFields: string[] = [];
     const params: any[] = [];
-    let paramIndex = 1;
 
     if (title) {
-      updateFields.push(`title = $${paramIndex++}`);
+      updateFields.push('title = ?');
       params.push(title);
 
       // Update slug if title changed
@@ -366,40 +377,45 @@ router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, 
         let slug = baseSlug;
         let counter = 1;
         while (true) {
-          const existingSlug = await pool.query('SELECT id FROM blog_posts WHERE slug = $1 AND id != $2', [slug, id]);
+          const existingSlug = await query('SELECT id FROM blog_posts WHERE slug = ? AND id != ?', [slug, id]);
           if (existingSlug.rows.length === 0) break;
           slug = `${baseSlug}-${counter++}`;
         }
-        updateFields.push(`slug = $${paramIndex++}`);
+        updateFields.push('slug = ?');
         params.push(slug);
       }
     }
 
     if (typeof content !== 'undefined') {
-      updateFields.push(`content = $${paramIndex++}`);
+      updateFields.push('content = ?');
       params.push(content);
     }
 
     if (typeof excerpt !== 'undefined') {
-      updateFields.push(`excerpt = $${paramIndex++}`);
+      updateFields.push('excerpt = ?');
       params.push(excerpt);
     }
 
     if (typeof published !== 'undefined') {
-      updateFields.push(`published = $${paramIndex++}`);
+      updateFields.push('published = ?');
       params.push(published);
     }
 
     // Handle cover image
     if (req.file) {
-      updateFields.push(`cover_image = $${paramIndex++}`);
+      updateFields.push('cover_image = ?');
       params.push(`/uploads/blog/${req.file.filename}`);
 
       // Delete old image file if present
       if (post.cover_image) {
         const oldImagePath = path.join(__dirname, '..', '..', post.cover_image);
         if (fs.existsSync(oldImagePath)) {
-          try { fs.unlinkSync(oldImagePath); } catch (e) { console.warn('Could not delete old image', e); }
+          try { 
+            fs.unlinkSync(oldImagePath);
+            console.log(`🗑️ Deleted old blog image for Medsaidabidi02: ${oldImagePath}`);
+          } catch (e) { 
+            console.warn('Could not delete old image for Medsaidabidi02:', e); 
+          }
         }
       }
     }
@@ -408,34 +424,36 @@ router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, 
       return res.status(400).json({ success: false, error: 'No fields to update' });
     }
 
-    params.push(id); // last param = id
-    const query = `
-      UPDATE blog_posts
-      SET ${updateFields.join(', ')}
-      WHERE id = $${params.length}
-      RETURNING *
-    `;
+    // Add updated_at and id
+    updateFields.push('updated_at = NOW()');
+    params.push(id);
 
-    const result = await pool.query(query, params);
+    await query(`UPDATE blog_posts SET ${updateFields.join(', ')} WHERE id = ?`, params);
 
+    // Get the updated post
+    const updatedPost = await query('SELECT * FROM blog_posts WHERE id = ?', [id]);
+
+    console.log(`✅ Blog post ${id} updated successfully for Medsaidabidi02`);
     res.json({
       success: true,
       message: 'Blog post updated successfully',
-      post: result.rows[0]
+      post: updatedPost.rows[0]
     });
   } catch (error) {
-    console.error('❌ Error updating blog post:', error);
+    console.error(`❌ Error updating blog post ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ success: false, error: 'Error updating blog post' });
   }
 });
 
-// DELETE /api/blog/:id - Delete blog post (author or admin)
+// DELETE /api/blog/:id - Delete blog post
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`🗑️ DELETE /api/blog/${id} - Deleting post  at 2025-09-09 15:15:29`);
+    
     const user = (req as any).user;
 
-    const existingPost = await pool.query('SELECT * FROM blog_posts WHERE id = $1', [id]);
+    const existingPost = await query('SELECT * FROM blog_posts WHERE id = ?', [id]);
     if (existingPost.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Blog post not found' });
     }
@@ -448,37 +466,48 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Not authorized to delete this post' });
     }
 
-    await pool.query('DELETE FROM blog_posts WHERE id = $1', [id]);
+    await query('DELETE FROM blog_posts WHERE id = ?', [id]);
 
     // Delete associated image
     if (post.cover_image) {
       const imagePath = path.join(__dirname, '..', '..', post.cover_image);
       if (fs.existsSync(imagePath)) {
-        try { fs.unlinkSync(imagePath); } catch (e) { console.warn('Could not delete image', e); }
+        try { 
+          fs.unlinkSync(imagePath);
+          console.log(`🗑️ Deleted blog image for : ${imagePath}`);
+        } catch (e) { 
+          console.warn('Could not delete blog image :', e); 
+        }
       }
     }
 
+    console.log(`✅ Blog post ${id} (${post.title}) deleted successfully `);
     res.json({ success: true, message: 'Blog post deleted successfully' });
   } catch (error) {
-    console.error('❌ Error deleting blog post:', error);
+    console.error(`❌ Error deleting blog post ${req.params.id} :`, error);
     res.status(500).json({ success: false, error: 'Error deleting blog post' });
   }
 });
 
-// POST /api/blog/upload-image - Upload image for blog content (admin or author)
+// POST /api/blog/upload-image - Upload image for blog content
 router.post('/upload-image', authenticateToken, upload.single('image'), async (req, res) => {
   try {
+    console.log('📤 POST /api/blog/upload-image - Uploading image  at 2025-09-09 15:15:29');
+    
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No image file provided' });
     }
+    
     const imageUrl = `/uploads/blog/${req.file.filename}`;
+    console.log(`✅ Blog image uploaded successfully : ${imageUrl}`);
     res.json({ success: true, imageUrl });
   } catch (error) {
-    console.error('❌ Error uploading image:', error);
+    console.error('❌ Error uploading blog image ', error);
     res.status(500).json({ success: false, error: 'Error uploading image' });
   }
 });
 
-console.log('🔗 REAL Blog routes module loaded (updated with drafts & author auth)');
+console.log('📝 Blog routes module loaded at 2025-09-09 15:15:29');
 
 export { router as blogRoutes };
+export default router;

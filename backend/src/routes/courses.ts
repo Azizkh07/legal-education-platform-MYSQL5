@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { pool } from '../database/index';
+import { query } from '../database/index';
 
 const router = Router();
 
@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
   try {
     console.log('📋 GET /api/courses - Real database query for Azizkh07 at 2025-08-20 13:40:09');
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         c.id,
         c.title,
@@ -63,7 +63,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`📋 GET /api/courses/${id} - Real database query for Azizkh07 at 2025-08-20 13:40:09`);
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         c.id,
         c.title,
@@ -80,7 +80,7 @@ router.get('/:id', async (req, res) => {
       FROM courses c
       LEFT JOIN subjects s ON c.id = s.course_id AND s.is_active = true
       LEFT JOIN videos v ON s.id = v.subject_id AND v.is_active = true
-      WHERE c.id = $1
+      WHERE c.id = ?
       GROUP BY c.id, c.title, c.description, c.cover_image, c.is_active, c.created_at, c.updated_at, c.category, c.thumbnail_path
     `, [id]);
     
@@ -116,10 +116,9 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Course title is required' });
     }
     
-    const result = await pool.query(`
+    const result = await query(`
       INSERT INTO courses (title, description, cover_image, category, is_active)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
+      VALUES (?, ?, ?, ?, ?)
     `, [
       title.trim(),
       description?.trim() || '',
@@ -128,8 +127,11 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       is_active !== false
     ]);
     
-    console.log('✅ Real course created in database for Azizkh07:', result.rows[0]);
-    res.status(201).json(result.rows[0]);
+    // Get the created course
+    const createdCourse = await query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
+    
+    console.log('✅ Real course created in database for Azizkh07:', createdCourse.rows[0]);
+    res.status(201).json(createdCourse.rows[0]);
     
   } catch (error) {
     console.error('❌ Database error creating course for Azizkh07:', error);
@@ -151,22 +153,21 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     console.log('📝 Update data:', { title, description, category, is_active });
     
     // Check if course exists first
-    const existsResult = await pool.query('SELECT id FROM courses WHERE id = $1', [id]);
+    const existsResult = await query('SELECT id FROM courses WHERE id = ?', [id]);
     if (existsResult.rows.length === 0) {
       console.log(`❌ Course ${id} not found for update by Azizkh07`);
       return res.status(404).json({ message: 'Course not found' });
     }
     
-    const result = await pool.query(`
+    await query(`
       UPDATE courses
-      SET title = COALESCE($1, title),
-          description = COALESCE($2, description),
-          cover_image = COALESCE($3, cover_image),
-          category = COALESCE($4, category),
-          is_active = COALESCE($5, is_active),
+      SET title = COALESCE(?, title),
+          description = COALESCE(?, description),
+          cover_image = COALESCE(?, cover_image),
+          category = COALESCE(?, category),
+          is_active = COALESCE(?, is_active),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
-      RETURNING *
+      WHERE id = ?
     `, [
       title?.trim() || null,
       description?.trim() || null,
@@ -176,8 +177,11 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
       id
     ]);
     
+    // Get the updated course
+    const updatedCourse = await query('SELECT * FROM courses WHERE id = ?', [id]);
+    
     console.log(`✅ Real course ${id} updated in database for Azizkh07`);
-    res.json(result.rows[0]);
+    res.json(updatedCourse.rows[0]);
     
   } catch (error) {
     console.error(`❌ Database error updating course ${req.params.id} for Azizkh07:`, error);
@@ -196,7 +200,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     console.log('👤 User:', req.user?.name || req.user?.email);
     
     // Check if course exists and get its info
-    const courseCheck = await pool.query('SELECT id, title FROM courses WHERE id = $1', [id]);
+    const courseCheck = await query('SELECT id, title FROM courses WHERE id = ?', [id]);
     if (courseCheck.rows.length === 0) {
       console.log(`❌ Course ${id} not found for deletion by Azizkh07`);
       return res.status(404).json({ message: 'Course not found' });
@@ -205,55 +209,40 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     const courseName = courseCheck.rows[0].title;
     console.log(`🎯 Deleting real course for Azizkh07: "${courseName}" (ID: ${id})`);
     
-    // Start transaction for cascade delete
-    await pool.query('BEGIN');
-    
     try {
       // Delete related videos first (they reference subjects)
       console.log('🔄 Step 1: Deleting related videos from database...');
-      const videosDeleted = await pool.query(`
+      const videosResult = await query(`
         DELETE FROM videos 
         WHERE subject_id IN (
-          SELECT id FROM subjects WHERE course_id = $1
+          SELECT id FROM subjects WHERE course_id = ?
         )
       `, [id]);
-      console.log(`✅ Deleted ${videosDeleted.rowCount || 0} real videos from database`);
+      console.log(`✅ Deleted related videos from database`);
       
       // Delete related subjects
       console.log('🔄 Step 2: Deleting related subjects from database...');
-      const subjectsDeleted = await pool.query('DELETE FROM subjects WHERE course_id = $1', [id]);
-      console.log(`✅ Deleted ${subjectsDeleted.rowCount || 0} real subjects from database`);
+      const subjectsResult = await query('DELETE FROM subjects WHERE course_id = ?', [id]);
+      console.log(`✅ Deleted related subjects from database`);
       
       // Delete user_courses relations
       console.log('🔄 Step 3: Deleting user course assignments from database...');
-      const userCoursesDeleted = await pool.query('DELETE FROM user_courses WHERE course_id = $1', [id]);
-      console.log(`✅ Deleted ${userCoursesDeleted.rowCount || 0} user course assignments from database`);
+      const userCoursesResult = await query('DELETE FROM user_courses WHERE course_id = ?', [id]);
+      console.log(`✅ Deleted user course assignments from database`);
       
       // Finally delete the course
       console.log('🔄 Step 4: Deleting course from database...');
-      const courseDeleted = await pool.query('DELETE FROM courses WHERE id = $1 RETURNING *', [id]);
-      
-      if (courseDeleted.rows.length === 0) {
-        throw new Error('Course not found during deletion');
-      }
-      
-      // Commit transaction
-      await pool.query('COMMIT');
+      const courseResult = await query('DELETE FROM courses WHERE id = ?', [id]);
       
       console.log(`✅ Real course "${courseName}" (ID: ${id}) completely deleted from database for Azizkh07`);
       res.json({ 
         message: 'Course and all related data deleted successfully from database',
-        deletedCourse: courseDeleted.rows[0],
-        deletedSubjects: subjectsDeleted.rowCount || 0,
-        deletedVideos: videosDeleted.rowCount || 0,
-        deletedUserAssignments: userCoursesDeleted.rowCount || 0,
+        deletedCourse: { id, title: courseName },
         timestamp: '2025-08-20 13:40:09',
         user: 'Azizkh07'
       });
       
     } catch (deleteError) {
-      // Rollback transaction on error
-      await pool.query('ROLLBACK');
       throw deleteError;
     }
     
@@ -272,18 +261,18 @@ router.get('/:id/subjects', async (req, res) => {
     const { id } = req.params;
     console.log(`📋 GET /api/courses/${id}/subjects - Real data for Azizkh07 at 2025-08-20 13:40:09`);
     
-    const courseResult = await pool.query('SELECT * FROM courses WHERE id = $1', [id]);
+    const courseResult = await query('SELECT * FROM courses WHERE id = ?', [id]);
     if (courseResult.rows.length === 0) {
       return res.status(404).json({ message: 'Course not found' });
     }
     
-    const subjectsResult = await pool.query(`
+    const subjectsResult = await query(`
       SELECT 
         s.*,
         COUNT(v.id) as video_count
       FROM subjects s
       LEFT JOIN videos v ON s.id = v.subject_id AND v.is_active = true
-      WHERE s.course_id = $1 AND s.is_active = true
+      WHERE s.course_id = ? AND s.is_active = true
       GROUP BY s.id
       ORDER BY s.order_index, s.created_at
     `, [id]);

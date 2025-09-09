@@ -72,18 +72,53 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setUsersLoading(true);
+      console.log('👥 Fetching users for Medsaidabidi02...');
+      
       const res: any = await api.get('/users');
+      console.log('✅ Users response for Medsaidabidi02:', res);
+      
       if (res && res.success && Array.isArray(res.users)) {
-        setUsers(res.users);
-        const pending = res.users.filter((u: User) => !u.is_approved).length;
-        setStats(prev => ({ ...prev, totalUsers: res.users.length, pendingApprovals: pending }));
+        // ✅ FIXED: Ensure all users have required properties
+        const normalizedUsers = res.users.map((user: any) => ({
+          id: user.id,
+          name: user.name || 'Nom inconnu',
+          email: user.email || 'Email inconnu',
+          is_admin: user.is_admin !== undefined ? user.is_admin : false,
+          is_approved: user.is_approved !== undefined ? user.is_approved : false,
+          created_at: user.created_at || new Date().toISOString(),
+          updated_at: user.updated_at || new Date().toISOString()
+        }));
+        
+        setUsers(normalizedUsers);
+        const pending = normalizedUsers.filter((u: User) => !u.is_approved).length;
+        setStats(prev => ({ 
+          ...prev, 
+          totalUsers: normalizedUsers.length, 
+          pendingApprovals: pending 
+        }));
+        
+        console.log(`✅ Loaded ${normalizedUsers.length} users for Medsaidabidi02`);
       } else if (Array.isArray(res)) {
-        setUsers(res);
+        // Handle direct array response
+        const normalizedUsers = res.map((user: any) => ({
+          id: user.id,
+          name: user.name || 'Nom inconnu',
+          email: user.email || 'Email inconnu',
+          is_admin: user.is_admin !== undefined ? user.is_admin : false,
+          is_approved: user.is_approved !== undefined ? user.is_approved : false,
+          created_at: user.created_at || new Date().toISOString(),
+          updated_at: user.updated_at || new Date().toISOString()
+        }));
+        
+        setUsers(normalizedUsers);
+        console.log(`✅ Loaded ${normalizedUsers.length} users (direct array) for Medsaidabidi02`);
       } else {
-        console.warn('Unexpected users response', res);
+        console.warn('⚠️ Unexpected users response for Medsaidabidi02:', res);
+        setUsers([]);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('❌ Error fetching users for Medsaidabidi02:', error);
+      setUsers([]);
     } finally {
       setUsersLoading(false);
     }
@@ -103,18 +138,36 @@ const AdminDashboard: React.FC = () => {
       const name = payload.name;
       const email = payload.email && payload.email.trim() !== '' ? payload.email : generateEmailFromName(name);
       const password = payload.password && payload.password.trim() !== '' ? payload.password : generatePassword();
-      const body = { name, email, password, isAdmin: payload.is_admin ?? false, isApproved: payload.is_approved ?? false };
+      const body = { 
+        name, 
+        email, 
+        password, 
+        isAdmin: payload.is_admin ?? false, 
+        isApproved: payload.is_approved ?? false 
+      };
+      
+      console.log('➕ Creating user for Medsaidabidi02 at 2025-09-09 18:18:36:', body);
+      
       const res: any = await api.post('/users/create', body);
+      
+      console.log('✅ User creation response for Medsaidabidi02:', res);
+      
       if (res && res.success) {
-        setUsers(prev => [res.user, ...prev]);
-        setStats(prev => ({ ...prev, totalUsers: prev.totalUsers + 1, pendingApprovals: prev.pendingApprovals + (res.user.is_approved ? 0 : 1) }));
-        alert(`Compte créé\nEmail: ${res.credentials.email}\nMot de passe: ${res.credentials.password}`);
+        // Show success message immediately
+        const credentials = res.credentials || { email, password };
+        alert(`✅ Utilisateur créé avec succès \n\nNom: ${name}\nEmail: ${credentials.email}\nMot de passe: ${credentials.password}\nStatut: ${payload.is_approved ? 'Approuvé' : 'En attente'}\n\nL'utilisateur peut maintenant se connecter.`);
+        
+        // ✅ SIMPLIFIED APPROACH: Just refresh the users list instead of trying to add manually
+        console.log('🔄 Refreshing users list after creation for Medsaidabidi02');
+        await fetchUsers(); // This will fetch the updated list including the new user
+        
       } else {
-        alert('Erreur lors de la création de l\'utilisateur');
+        console.error('❌ User creation failed for Medsaidabidi02:', res);
+        alert('❌ Erreur lors de la création de l\'utilisateur');
       }
     } catch (error) {
-      console.error('Error creating user:', error);
-      alert(getErrorMessage(error));
+      console.error('❌ Error creating user for Medsaidabidi02:', error);
+      alert(`❌ Erreur: ${getErrorMessage(error)}`);
     }
   };
 

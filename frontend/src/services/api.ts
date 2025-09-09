@@ -1,7 +1,7 @@
 export class ApiClient {
   private baseURL: string;
 
-  constructor(baseURL: string = 'http://localhost:5000') {
+  constructor(baseURL: string = 'http://localhost:5001') {
     this.baseURL = baseURL;
     console.log('🚀 ApiClient initialized with baseURL:', baseURL);
   }

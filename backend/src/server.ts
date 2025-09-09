@@ -1,21 +1,22 @@
 import app from './app';
 import { config } from './config';
-import { pool } from './database';
+import { query } from './database'; // Import the helper function
 
 const startServer = async () => {
   try {
-    // Test database connection
-    await pool.query('SELECT NOW()');
+    // Test database connection using the helper function
+    const testResult = await query('SELECT NOW() as now');
+    console.log(`✅ Database test query successful for Medsaidabidi02: ${JSON.stringify(testResult.rows)}`);
     console.log('✅ Database connected successfully');
 
     // Check if admin exists
-    const adminCheck = await pool.query(
+    const adminCheck = await query(
       'SELECT email, is_admin, is_approved FROM users WHERE is_admin = true'
     );
     
     console.log('👑 Admin users found:', adminCheck.rows.length);
     if (adminCheck.rows.length > 0) {
-      console.log('👑 Admin details:', adminCheck.rows.map(u => ({
+      console.log('👑 Admin details:', adminCheck.rows.map((u: any) => ({
         email: u.email,
         is_admin: u.is_admin,
         is_approved: u.is_approved

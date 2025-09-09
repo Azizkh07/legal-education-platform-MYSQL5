@@ -312,7 +312,7 @@ const BlogManagement: React.FC = () => {
     } catch (error) {
       console.error('❌ BlogManagement: Connection test failed:', error);
       if (handleAuthError(error)) return;
-      alert('❌ Cannot connect to backend. Make sure it\'s running on http://localhost:5000');
+      alert('❌ Cannot connect to backend. Make sure it\'s running on http://localhost:5001');
     }
   };
 

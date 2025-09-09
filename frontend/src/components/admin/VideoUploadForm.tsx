@@ -45,7 +45,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string>('');
 
-  console.log(`🎬 VideoUploadForm loaded for Azizkh07 at 2025-08-20 13:57:10`);
+  console.log(`🎬 VideoUploadForm loaded for Medsaidabidi02 at 2025-09-09 17:00:14`);
 
   // Load courses and subjects when form opens
   useEffect(() => {
@@ -72,7 +72,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
     try {
       setLoadingData(true);
       setError('');
-      console.log('📊 Loading courses and subjects for Azizkh07...');
+      console.log('📊 Loading courses and subjects for Medsaidabidi02...');
       
       // ✅ FIXED: Use your existing API endpoints
       const [coursesRes, subjectsRes] = await Promise.all([
@@ -90,7 +90,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setFilteredSubjects(subjectsRes.filter(s => s.is_active));
       
     } catch (error) {
-      console.error('❌ Error loading data for Azizkh07:', error);
+      console.error('❌ Error loading data for Medsaidabidi02:', error);
       setError(`Erreur lors du chargement: ${getErrorMessage(error)}`);
     } finally {
       setLoadingData(false);
@@ -138,7 +138,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setPreviewUrl(url);
       setError('');
       
-      console.log('🎬 Video file selected for Azizkh07:', {
+      console.log('🎬 Video file selected for Medsaidabidi02:', {
         name: file.name,
         size: (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
         type: file.type
@@ -167,7 +167,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setThumbnailPreview(url);
       setError('');
       
-      console.log('🖼️ Thumbnail file selected for Azizkh07:', {
+      console.log('🖼️ Thumbnail file selected for Medsaidabidi02:', {
         name: file.name,
         size: (file.size / 1024).toFixed(2) + ' KB'
       });
@@ -204,7 +204,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setVideoFile(videoFile);
       const url = URL.createObjectURL(videoFile);
       setPreviewUrl(url);
-      console.log('🎬 Video dropped for Azizkh07:', videoFile.name);
+      console.log('🎬 Video dropped for Medsaidabidi02:', videoFile.name);
     }
 
     if (imageFile) {
@@ -217,7 +217,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setThumbnailFile(imageFile);
       const url = URL.createObjectURL(imageFile);
       setThumbnailPreview(url);
-      console.log('🖼️ Thumbnail dropped for Azizkh07:', imageFile.name);
+      console.log('🖼️ Thumbnail dropped for Medsaidabidi02:', imageFile.name);
     }
   };
 
@@ -252,13 +252,13 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
     const selectedSubject = subjects.find(s => s.id.toString() === formData.subject_id);
     const selectedCourseData = courses.find(c => c.id === selectedSubject?.course_id);
     
-    console.log('📤 Starting video upload for Azizkh07:', {
+    console.log('📤 Starting video upload for Medsaidabidi02:', {
       title: formData.title,
       subject: selectedSubject?.title,
       course: selectedCourseData?.title,
       video_size: (videoFile!.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB',
       has_thumbnail: !!thumbnailFile,
-      timestamp: '2025-08-20 13:57:10'
+      timestamp: '2025-09-09 17:00:14'
     });
 
     try {
@@ -276,7 +276,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
 
       console.log('📤 Uploading to /api/videos with FormData...');
 
-      // ✅ FIXED: Upload directly to your video API endpoint
+      // ✅ FIXED: Upload with proper response handling for MySQL5
       const response = await fetch('/api/videos', {
         method: 'POST',
         body: uploadFormData,
@@ -288,15 +288,32 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('❌ Upload response error for Medsaidabidi02:', errorText);
         throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('✅ Raw upload response for Medsaidabidi02:', result);
 
-      console.log('✅ Video uploaded successfully for Azizkh07:', {
-        id: result.id,
-        title: result.title,
-        subject_id: result.subject_id
+      // ✅ FIXED: Handle different response structures from MySQL5
+      let actualVideo;
+      if (result.success && result.data) {
+        // New response format with success flag and data wrapper
+        actualVideo = result.data;
+        console.log('✅ Extracted video from data wrapper:', actualVideo);
+      } else if (result.id) {
+        // Direct video object
+        actualVideo = result;
+        console.log('✅ Using direct video object:', actualVideo);
+      } else {
+        console.error('❌ Unexpected response structure for Medsaidabidi02:', result);
+        throw new Error('Unexpected response structure from server');
+      }
+
+      console.log('✅ Video uploaded successfully for Medsaidabidi02:', {
+        id: actualVideo.id,
+        title: actualVideo.title,
+        subject_id: actualVideo.subject_id
       });
 
       // Reset form
@@ -313,10 +330,11 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
       setSelectedCourse('');
       setUploadProgress(0);
 
-      onSuccess?.(result);
+      // ✅ FIXED: Pass the actual video object to parent
+      onSuccess?.(actualVideo);
       
     } catch (error) {
-      console.error('❌ Upload error for Azizkh07:', error);
+      console.error('❌ Upload error for Medsaidabidi02:', error);
       setError(error instanceof Error ? error.message : 'Échec du téléchargement. Veuillez réessayer.');
     } finally {
       setLoading(false);
@@ -615,7 +633,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Progression du téléchargement</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span>Téléchargement en cours pour Azizkh07...</span>
+                      <span>Téléchargement en cours pour Medsaidabidi02...</span>
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">

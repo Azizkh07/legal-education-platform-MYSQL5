@@ -1,20 +1,20 @@
-// Centralized API client for the frontend
-// - Attaches Authorization header from localStorage on every request
+// Centralized API client for the frontend - FIXED for MySQL5 backend
+// - Automatically extracts data from {success: true, data: [...]} responses
 // - Handles JSON vs FormData bodies
 // - Provides safe, masked logging for debugging
-// - Does NOT auto-clear auth on 401/403 (client code should handle re-login UI)
-// - Includes upload helper with progress using XHR
+// - Compatible with existing VideoManagement and CoursesPage components
+// - Fixed for Medsaidabidi02's education-platform MySQL5 backend
 
 type JsonObject = { [key: string]: any };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    console.log(`🔌 API Client initialized for ${getCurrentUserTag()} with base URL: ${baseUrl}`);
+    console.log(`🔌 API Client initialized for ${getCurrentUserTag()} with base URL: ${baseUrl} at 2025-09-09 16:14:44`);
   }
 
   // Utility to normalize endpoint and build full URL
@@ -45,10 +45,42 @@ class ApiClient {
     return '***';
   }
 
+  // ✅ FIXED: Extract data from MySQL5 backend response structure
+  private extractData<T>(response: any): T {
+    console.log('📦 Extracting data for Medsaidabidi02 from response:', typeof response, Array.isArray(response));
+    
+    // If it's already an array, return as-is
+    if (Array.isArray(response)) {
+      console.log('✅ Response is already an array for Medsaidabidi02:', response.length, 'items');
+      return response as T;
+    }
+    
+    // If it's an object with success/data structure (MySQL5 backend)
+    if (response && typeof response === 'object') {
+      if ('success' in response && response.success === true && 'data' in response) {
+        console.log('✅ Extracting data from success response for Medsaidabidi02:', Array.isArray(response.data) ? response.data.length + ' items' : typeof response.data);
+        return response.data as T;
+      }
+      
+      if ('data' in response) {
+        console.log('✅ Extracting data property for Medsaidabidi02');
+        return response.data as T;
+      }
+      
+      if ('success' in response && response.success && 'result' in response) {
+        console.log('✅ Extracting result from success response for Medsaidabidi02');
+        return response.result as T;
+      }
+    }
+    
+    console.log('✅ Returning response as-is for Medsaidabidi02');
+    return response as T;
+  }
+
   // The single request entrypoint used by get/post/put/delete
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = this.buildUrl(endpoint);
-    console.log(`🔍 Making ${options.method || 'GET'} request for ${getCurrentUserTag()} to: ${url}`);
+    console.log(`🔍 Making ${options.method || 'GET'} request for ${getCurrentUserTag()} to: ${url} at 2025-09-09 16:14:44`);
 
     // Prepare headers (start empty, fill below)
     const suppliedHeaders = this.headersInitToObject(options.headers);
@@ -68,7 +100,7 @@ class ApiClient {
     // Attach Authorization from localStorage *here* (ensures token is read at call time)
     try {
       if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token');
         if (token && !headers['Authorization'] && !headers['authorization']) {
           headers['Authorization'] = `Bearer ${token}`;
         }
@@ -99,7 +131,7 @@ class ApiClient {
     try {
       response = await fetch(url, config);
     } catch (networkErr) {
-      console.error(`❌ Network error while requesting ${url}:`, networkErr);
+      console.error(`❌ Network error while requesting ${url} for Medsaidabidi02:`, networkErr);
       throw new Error('Network error - please check your connection');
     }
 
@@ -121,10 +153,10 @@ class ApiClient {
       }
       const serverMessage = parsed?.error || parsed?.message || text || response.statusText;
       if (response.status === 401) {
-        console.warn('🔐 Unauthorized response:', serverMessage);
+        console.warn('🔐 Unauthorized response for Medsaidabidi02:', serverMessage);
         throw new Error(serverMessage || 'Authentication required. Please log in again.');
       } else {
-        console.warn('⛔ Forbidden response:', serverMessage);
+        console.warn('⛔ Forbidden response for Medsaidabidi02:', serverMessage);
         throw new Error(serverMessage || 'Forbidden');
       }
     }
@@ -135,10 +167,10 @@ class ApiClient {
       try {
         const parsed = text ? JSON.parse(text) : null;
         const message = parsed?.message || parsed?.error || text || `HTTP error ${response.status}`;
-        console.error('❌ Error response:', message);
+        console.error('❌ Error response for Medsaidabidi02:', message);
         throw new Error(message);
       } catch (err) {
-        console.error('❌ Error response (non-JSON):', text);
+        console.error('❌ Error response (non-JSON) for Medsaidabidi02:', text);
         throw new Error(text || `HTTP error ${response.status}`);
       }
     }
@@ -146,10 +178,16 @@ class ApiClient {
     // If caller expects JSON, parse and return
     if (isJson) {
       try {
-        const data = await response.json();
-        return data as T;
+        const rawData = await response.json();
+        console.log('📊 Raw JSON response for Medsaidabidi02:', typeof rawData, Array.isArray(rawData) ? rawData.length + ' items' : 'object');
+        
+        // ✅ FIXED: Extract data from MySQL5 backend response structure
+        const extractedData = this.extractData<T>(rawData);
+        console.log('✅ Extracted data for Medsaidabidi02:', typeof extractedData, Array.isArray(extractedData) ? extractedData.length + ' items' : 'object');
+        
+        return extractedData;
       } catch (err) {
-        console.error('❌ Failed to parse JSON response from', url, err);
+        console.error('❌ Failed to parse JSON response from', url, 'for Medsaidabidi02:', err);
         throw new Error('Invalid JSON response from server');
       }
     }
@@ -169,7 +207,6 @@ class ApiClient {
   async post<T = any>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
     const body = data instanceof FormData ? data : data !== undefined ? JSON.stringify(data) : undefined;
     const headers = options?.headers || {};
-    // If sending JSON, ensure caller likely intends application/json; request() will ensure header if absent.
     const config: RequestInit = {
       method: 'POST',
       body,
@@ -210,7 +247,7 @@ class ApiClient {
     onProgress?: (percent: number) => void
   ): Promise<T> {
     const url = this.buildUrl(endpoint);
-    console.log(`📤 Starting upload for ${getCurrentUserTag()} to: ${url}`);
+    console.log(`📤 Starting upload for ${getCurrentUserTag()} to: ${url} at 2025-09-09 16:14:44`);
 
     return new Promise<T>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -219,7 +256,7 @@ class ApiClient {
       // Attach Authorization header from localStorage
       try {
         if (typeof window !== 'undefined') {
-          const token = localStorage.getItem('authToken');
+          const token = localStorage.getItem('authToken') || localStorage.getItem('token');
           if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             console.log('🔐 Auth header added to upload request for', getCurrentUserTag());
@@ -244,7 +281,8 @@ class ApiClient {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-            resolve(parsed as T);
+            const extracted = this.extractData<T>(parsed);
+            resolve(extracted);
           } catch (err) {
             // Non-JSON but successful
             // @ts-ignore
@@ -274,6 +312,7 @@ class ApiClient {
   clearAuthData() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
       console.log(`🗑️ Auth data cleared for ${getCurrentUserTag()}`);
     }
@@ -283,13 +322,13 @@ class ApiClient {
 // Helper to identify developer/user in logs (non-sensitive)
 function getCurrentUserTag() {
   try {
-    if (typeof window === 'undefined') return 'client';
+    if (typeof window === 'undefined') return 'Medsaidabidi02';
     const u = localStorage.getItem('user');
-    if (!u) return 'guest';
+    if (!u) return 'Medsaidabidi02';
     const parsed = JSON.parse(u);
-    return parsed?.email || parsed?.name || 'user';
+    return parsed?.email || parsed?.name || 'Medsaidabidi02';
   } catch {
-    return 'user';
+    return 'Medsaidabidi02';
   }
 }
 
@@ -306,21 +345,23 @@ export const apiUtils = {
   setAuthToken: (token: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', token);
-      console.log('🔑 Auth token stored in localStorage');
+      localStorage.setItem('token', token); // Backward compatibility
+      console.log('🔑 Auth token stored in localStorage for Medsaidabidi02');
     }
   },
 
   removeAuthToken: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
       localStorage.removeItem('user');
-      console.log('🗑️ Auth token removed from localStorage');
+      console.log('🗑️ Auth token removed from localStorage for Medsaidabidi02');
     }
   },
 
   getAuthToken: (): string | null => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken');
+      return localStorage.getItem('authToken') || localStorage.getItem('token');
     }
     return null;
   },
@@ -328,7 +369,7 @@ export const apiUtils = {
   setUserData: (user: any) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user));
-      console.log('👤 User data stored:', user?.email || user?.name || 'unknown');
+      console.log('👤 User data stored for Medsaidabidi02:', user?.email || user?.name || 'unknown');
     }
   },
 
@@ -339,7 +380,7 @@ export const apiUtils = {
       try {
         return JSON.parse(raw);
       } catch (e) {
-        console.error('❌ Error parsing user data from localStorage', e);
+        console.error('❌ Error parsing user data from localStorage for Medsaidabidi02:', e);
         return null;
       }
     }
@@ -349,7 +390,7 @@ export const apiUtils = {
   isAuthenticated: (): boolean => {
     const token = apiUtils.getAuthToken();
     const ok = !!token;
-    console.log(`🔍 Authentication check: ${ok ? 'authenticated' : 'not authenticated'}`);
+    console.log(`🔍 Authentication check for Medsaidabidi02: ${ok ? 'authenticated' : 'not authenticated'}`);
     return ok;
   },
 
@@ -366,14 +407,33 @@ export const apiUtils = {
   }
 };
 
-// Extract data from API responses consistently
+// ✅ FIXED: Extract data from API responses consistently - handles MySQL5 backend
 export const handleApiResponse = <T = any>(response: any): T => {
-  // If API returns { success: true, data: ... } use data
-  if (response && typeof response === 'object') {
-    if ('data' in response) return response.data as T;
-    if ('success' in response && response.success && 'result' in response) return response.result as T;
+  console.log('📦 Handling API response for Medsaidabidi02 at 2025-09-09 16:14:44:', typeof response);
+  
+  // If it's already an array, return as-is
+  if (Array.isArray(response)) {
+    console.log('✅ Response is already an array for Medsaidabidi02:', response.length, 'items');
     return response as T;
   }
+  
+  // If API returns { success: true, data: ... } use data
+  if (response && typeof response === 'object') {
+    if ('success' in response && response.success === true && 'data' in response) {
+      console.log('✅ Extracting data from success response for Medsaidabidi02');
+      return response.data as T;
+    }
+    if ('data' in response) {
+      console.log('✅ Extracting data property for Medsaidabidi02');
+      return response.data as T;
+    }
+    if ('success' in response && response.success && 'result' in response) {
+      console.log('✅ Extracting result from success response for Medsaidabidi02');
+      return response.result as T;
+    }
+  }
+  
+  console.log('✅ Returning response as-is for Medsaidabidi02');
   return response as T;
 };
 
@@ -393,3 +453,5 @@ export const formatError = (error: any): { message: string; details?: string } =
     details: error?.stack || error?.details || undefined,
   };
 };
+
+console.log('🚀 API Client fully loaded for Medsaidabidi02 education-platform at 2025-09-09 16:14:44');

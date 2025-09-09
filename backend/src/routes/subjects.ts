@@ -1,329 +1,402 @@
-import { Router } from 'express';
-import { pool } from '../database/index';
+import { Router, Request, Response } from 'express';
+import { query } from '../database/index';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-console.log('📖 FIXED Subjects API loaded for Azizkh07 - 2025-08-20 13:40:09');
+console.log('📖 FIXED Subjects API loaded for Medsaidabidi02 - 2025-09-09 16:01:15');
 
-// Simple fallback auth middleware
-const simpleAuth = (req: any, res: any, next: any) => {
-  console.log('🔓 Using simple auth bypass for subjects - Azizkh07');
-  req.user = { id: 1, name: 'Azizkh07', email: 'admin@cliniquejuriste.com', is_admin: true };
-  next();
-};
-
-// Always use simple auth for now
-const authenticateToken = simpleAuth;
-const requireAdmin = simpleAuth;
-
-console.log('✅ Simple auth middleware loaded for subjects');
-
-// GET all subjects - REAL DATA ONLY
-router.get('/', async (req, res) => {
+// GET all subjects
+router.get('/', async (req: Request, res: Response) => {
   try {
-    console.log('📋 GET /api/subjects - Real database query for Azizkh07 at 2025-08-20 13:40:09');
+    console.log('📋 GET /api/subjects - Fetching subjects for Medsaidabidi02 at 2025-09-09 16:01:15');
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         s.*,
         c.title as course_title,
-        COUNT(v.id) as video_count
+        c.category as course_category,
+        COUNT(DISTINCT v.id) as video_count
       FROM subjects s
       LEFT JOIN courses c ON s.course_id = c.id
       LEFT JOIN videos v ON s.id = v.subject_id AND v.is_active = true
-      WHERE s.is_active = true
-      GROUP BY s.id, c.title
-      ORDER BY s.course_id, s.order_index, s.created_at
+      WHERE s.is_active = true AND c.is_active = true
+      GROUP BY s.id
+      ORDER BY c.id, s.order_index, s.created_at
     `);
     
-    console.log(`✅ Real data: Found ${result.rows.length} subjects for Azizkh07`);
-    res.json(result.rows);
-    
+    console.log(`✅ Found ${result.rows.length} subjects for Medsaidabidi02`);
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    });
   } catch (error) {
-    console.error('❌ Database error fetching subjects for Azizkh07:', error);
+    console.error('❌ Database error fetching subjects for Medsaidabidi02:', error);
     res.status(500).json({ 
+      success: false,
       message: 'Database error fetching subjects',
       error: error.message 
     });
   }
 });
 
-// GET subjects for specific course - REAL DATA ONLY
-router.get('/course/:courseId', async (req, res) => {
+// GET subjects by course ID
+router.get('/course/:courseId', async (req: Request, res: Response) => {
   try {
     const { courseId } = req.params;
-    console.log(`📋 GET /api/subjects/course/${courseId} - Real data for Azizkh07 at 2025-08-20 13:40:09`);
+    console.log(`📋 GET /api/subjects/course/${courseId} for Medsaidabidi02`);
     
-    // Check if course exists
-    const courseCheck = await pool.query('SELECT id, title FROM courses WHERE id = $1', [courseId]);
-    if (courseCheck.rows.length === 0) {
-      console.log(`❌ Course ${courseId} not found for Azizkh07`);
-      return res.status(404).json({ message: 'Course not found' });
-    }
-    
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         s.*,
-        COUNT(v.id) as video_count,
-        COALESCE(SUM(v.duration), 0) as total_duration
+        c.title as course_title,
+        COUNT(DISTINCT v.id) as video_count
       FROM subjects s
+      LEFT JOIN courses c ON s.course_id = c.id
       LEFT JOIN videos v ON s.id = v.subject_id AND v.is_active = true
-      WHERE s.course_id = $1 AND s.is_active = true
+      WHERE s.course_id = ? AND s.is_active = true AND c.is_active = true
       GROUP BY s.id
       ORDER BY s.order_index, s.created_at
     `, [courseId]);
     
-    console.log(`✅ Real data: Found ${result.rows.length} subjects for course ${courseId} for Azizkh07`);
-    res.json(result.rows);
-    
+    console.log(`✅ Found ${result.rows.length} subjects for course ${courseId} for Medsaidabidi02`);
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    });
   } catch (error) {
-    console.error(`❌ Database error fetching subjects for course ${req.params.courseId} for Azizkh07:`, error);
+    console.error(`❌ Database error fetching subjects for course ${req.params.courseId} for Medsaidabidi02:`, error);
     res.status(500).json({ 
-      message: 'Database error fetching subjects for course',
+      success: false,
+      message: 'Database error fetching subjects',
       error: error.message 
     });
   }
 });
 
-// GET single subject - REAL DATA ONLY
-router.get('/:id', async (req, res) => {
+// POST create subject
+// ✅ ULTRA-FIXED: POST create new subject with bulletproof MySQL5 response handling
+router.post('/', async (req, res) => {
+  try {
+    const { title, course_id, professor_name, hours, description, is_active } = req.body;
+    
+    console.log('📤 POST /api/subjects - Creating subject for Medsaidabidi02 at 2025-09-09 17:25:32');
+    console.log('📝 Data:', { title, course_id, professor_name, hours, is_active });
+    
+    // Validate required fields
+    if (!title || !course_id || !professor_name) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Title, course_id, and professor_name are required',
+        received: { title: !!title, course_id: !!course_id, professor_name: !!professor_name }
+      });
+    }
+    
+    // Check if course exists
+    const courseCheck = await query('SELECT id, title FROM courses WHERE id = ?', [course_id]);
+    
+    if (courseCheck.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Course not found',
+        course_id: course_id
+      });
+    }
+    
+    console.log('🔄 Inserting subject into database...');
+    
+    // ✅ ULTRA-FIXED: Use multiple approaches to ensure we get the subject ID
+    let subjectId = null;
+    let createdSubject = null;
+    
+    try {
+      // Approach 1: Try direct INSERT and get insertId
+      const insertResult = await query(`
+        INSERT INTO subjects (
+          title, course_id, professor_name, hours, description, is_active
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        title.trim(),
+        parseInt(course_id),
+        professor_name.trim(),
+        parseInt(hours) || 0,
+        description?.trim() || '',
+        is_active !== false
+      ]);
+      
+      console.log('✅ Insert result structure for Medsaidabidi02:', {
+        type: typeof insertResult,
+        keys: Object.keys(insertResult || {}),
+        insertResult: insertResult
+      });
+      
+      // Try multiple ways to extract the subject ID
+      if (insertResult && typeof insertResult === 'object') {
+        // Method 1: Direct insertId property
+        if (insertResult.insertId) {
+          subjectId = insertResult.insertId;
+          console.log('✅ Got subject ID from insertResult.insertId:', subjectId);
+        }
+        // Method 2: insertId in rows array
+        else if (insertResult.rows && insertResult.rows.length > 0 && insertResult.rows[0].insertId) {
+          subjectId = insertResult.rows[0].insertId;
+          console.log('✅ Got subject ID from insertResult.rows[0].insertId:', subjectId);
+        }
+        // Method 3: Check if insertResult is the ID itself
+        else if (typeof insertResult === 'number') {
+          subjectId = insertResult;
+          console.log('✅ Got subject ID from direct result:', subjectId);
+        }
+        // Method 4: Check affectedRows and get LAST_INSERT_ID
+        else if (insertResult.affectedRows && insertResult.affectedRows > 0) {
+          console.log('🔄 Affected rows > 0, trying LAST_INSERT_ID()...');
+          const lastIdResult = await query('SELECT LAST_INSERT_ID() as id');
+          console.log('✅ LAST_INSERT_ID result:', lastIdResult);
+          if (lastIdResult.rows && lastIdResult.rows[0] && lastIdResult.rows[0].id) {
+            subjectId = lastIdResult.rows[0].id;
+            console.log('✅ Got subject ID from LAST_INSERT_ID():', subjectId);
+          }
+        }
+      }
+      
+      // Approach 2: If still no ID, try to find the most recent subject with our exact data
+      if (!subjectId) {
+        console.log('🔄 No subject ID found, searching by title and course...');
+        const searchResult = await query(`
+          SELECT id FROM subjects 
+          WHERE title = ? AND course_id = ? AND professor_name = ? 
+          ORDER BY created_at DESC 
+          LIMIT 1
+        `, [title.trim(), parseInt(course_id), professor_name.trim()]);
+        
+        if (searchResult.rows && searchResult.rows.length > 0) {
+          subjectId = searchResult.rows[0].id;
+          console.log('✅ Found subject ID by searching:', subjectId);
+        }
+      }
+      
+      // Approach 3: Last resort - get the most recent subject
+      if (!subjectId) {
+        console.log('🔄 Still no subject ID, getting most recent subject...');
+        const recentResult = await query('SELECT id FROM subjects ORDER BY created_at DESC LIMIT 1');
+        if (recentResult.rows && recentResult.rows.length > 0) {
+          subjectId = recentResult.rows[0].id;
+          console.log('⚠️ Using most recent subject ID as fallback:', subjectId);
+        }
+      }
+      
+      if (!subjectId) {
+        throw new Error('Could not determine subject ID after insert - all methods failed');
+      }
+      
+      // Now get the complete subject data with course info
+      console.log(`🔄 Fetching complete subject data for ID: ${subjectId}`);
+      const createdSubjectResult = await query(`
+        SELECT 
+          s.*,
+          c.title as course_title,
+          c.category as course_category
+        FROM subjects s
+        LEFT JOIN courses c ON s.course_id = c.id
+        WHERE s.id = ?
+      `, [subjectId]);
+      
+      if (!createdSubjectResult.rows || createdSubjectResult.rows.length === 0) {
+        throw new Error(`Subject with ID ${subjectId} was inserted but cannot be retrieved`);
+      }
+      
+      createdSubject = createdSubjectResult.rows[0];
+      
+      console.log('✅ Subject created successfully for Medsaidabidi02:', {
+        id: createdSubject.id,
+        title: createdSubject.title,
+        course_id: createdSubject.course_id,
+        course_title: createdSubject.course_title,
+        professor_name: createdSubject.professor_name
+      });
+      
+      // ✅ FIXED: Return comprehensive response structure
+      return res.status(201).json({
+        success: true,
+        message: 'Subject created successfully',
+        data: createdSubject,
+        // Also include subject properties directly for backward compatibility
+        id: createdSubject.id,
+        title: createdSubject.title,
+        course_id: createdSubject.course_id,
+        professor_name: createdSubject.professor_name,
+        hours: createdSubject.hours,
+        description: createdSubject.description,
+        is_active: createdSubject.is_active,
+        created_at: createdSubject.created_at,
+        updated_at: createdSubject.updated_at,
+        // Include joined data
+        course_title: createdSubject.course_title,
+        course_category: createdSubject.course_category
+      });
+      
+    } catch (dbError) {
+      console.error('❌ Database operation failed for Medsaidabidi02:', dbError);
+      throw new Error(`Database operation failed: ${dbError.message}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Subject creation error for Medsaidabidi02:', error);
+    
+    // ✅ FIXED: Provide detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorStack = error instanceof Error ? error.stack : '';
+    
+    console.error('❌ Error stack for Medsaidabidi02:', errorStack);
+    
+    return res.status(500).json({ 
+      success: false,
+      message: 'Database error creating subject',
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+      details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+    });
+  }
+});
+
+// GET single subject
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(`📋 GET /api/subjects/${id} - Real data for Azizkh07 at 2025-08-20 13:40:09`);
+    console.log(`📋 GET /api/subjects/${id} for Medsaidabidi02`);
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         s.*,
         c.title as course_title,
-        COUNT(v.id) as video_count,
-        COALESCE(SUM(v.duration), 0) as total_duration
+        c.category as course_category,
+        COUNT(DISTINCT v.id) as video_count
       FROM subjects s
       LEFT JOIN courses c ON s.course_id = c.id
       LEFT JOIN videos v ON s.id = v.subject_id AND v.is_active = true
-      WHERE s.id = $1
-      GROUP BY s.id, c.title
+      WHERE s.id = ? AND s.is_active = true
+      GROUP BY s.id
     `, [id]);
     
     if (result.rows.length === 0) {
-      console.log(`❌ Subject ${id} not found for Azizkh07`);
-      return res.status(404).json({ message: 'Subject not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Subject not found' 
+      });
     }
     
-    console.log(`✅ Real data: Found subject ${id} for Azizkh07`);
-    res.json(result.rows[0]);
+    console.log(`✅ Found subject ${id} for Medsaidabidi02`);
+    res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    });
     
   } catch (error) {
-    console.error(`❌ Database error fetching subject ${req.params.id} for Azizkh07:`, error);
+    console.error(`❌ Database error fetching subject ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ 
+      success: false,
       message: 'Database error fetching subject',
       error: error.message 
     });
   }
 });
 
-// POST create new subject - REAL DATABASE INSERT
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { course_id, title, description, professor_name, hours, order_index, is_active } = req.body;
-    
-    console.log('➕ POST /api/subjects - Creating real subject for Azizkh07 at 2025-08-20 13:40:09');
-    console.log('👤 User:', req.user?.name || req.user?.email);
-    console.log('📝 Subject data:', { course_id, title, professor_name, hours });
-    
-    // Validate required fields
-    if (!course_id || !title || !professor_name) {
-      console.log('❌ Missing required fields for subject creation by Azizkh07');
-      return res.status(400).json({ 
-        message: 'Course ID, title, and professor name are required' 
-      });
-    }
-    
-    // Check if course exists
-    const courseCheck = await pool.query('SELECT id, title FROM courses WHERE id = $1', [course_id]);
-    if (courseCheck.rows.length === 0) {
-      console.log(`❌ Course ${course_id} not found for subject creation by Azizkh07`);
-      return res.status(404).json({ message: 'Course not found' });
-    }
-    
-    // Get next order_index if not provided
-    let finalOrderIndex = order_index;
-    if (finalOrderIndex === undefined || finalOrderIndex === null) {
-      const maxOrderResult = await pool.query(
-        'SELECT COALESCE(MAX(order_index), 0) as max_order FROM subjects WHERE course_id = $1',
-        [course_id]
-      );
-      finalOrderIndex = (maxOrderResult.rows[0].max_order || 0) + 1;
-    }
-    
-    const result = await pool.query(`
-      INSERT INTO subjects 
-      (course_id, title, description, professor_name, hours, order_index, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `, [
-      course_id,
-      title.trim(),
-      description?.trim() || '',
-      professor_name.trim(),
-      parseInt(hours) || 0,
-      finalOrderIndex,
-      is_active !== false
-    ]);
-    
-    console.log('✅ Real subject created in database for Azizkh07:', result.rows[0]);
-    res.status(201).json(result.rows[0]);
-    
-  } catch (error) {
-    console.error('❌ Database error creating subject for Azizkh07:', error);
-    res.status(500).json({ 
-      message: 'Database error creating subject',
-      error: error.message 
-    });
-  }
-});
-
-// PUT update subject - REAL DATABASE UPDATE
-router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
+// PUT update subject
+router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, professor_name, hours, order_index, is_active } = req.body;
+    const { title, description, professor_name, hours, order_index } = req.body;
     
-    console.log(`🔄 PUT /api/subjects/${id} - Updating real subject for Azizkh07 at 2025-08-20 13:40:09`);
-    console.log('👤 User:', req.user?.name || req.user?.email);
-    console.log('📝 Update data:', { title, professor_name, hours, order_index });
+    console.log(`📝 PUT /api/subjects/${id} for Medsaidabidi02`);
     
     // Check if subject exists
-    const existsResult = await pool.query('SELECT id FROM subjects WHERE id = $1', [id]);
-    if (existsResult.rows.length === 0) {
-      console.log(`❌ Subject ${id} not found for update by Azizkh07`);
-      return res.status(404).json({ message: 'Subject not found' });
+    const existingSubject = await query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
+    if (existingSubject.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Subject not found' 
+      });
     }
-    
-    const result = await pool.query(`
-      UPDATE subjects
-      SET title = COALESCE($1, title),
-          description = COALESCE($2, description),
-          professor_name = COALESCE($3, professor_name),
-          hours = COALESCE($4, hours),
-          order_index = COALESCE($5, order_index),
-          is_active = COALESCE($6, is_active),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
-      RETURNING *
-    `, [
-      title?.trim() || null,
-      description?.trim() || null,
-      professor_name?.trim() || null,
-      hours ? parseInt(hours) : null,
-      order_index ? parseInt(order_index) : null,
-      is_active,
-      id
-    ]);
-    
-    console.log(`✅ Real subject ${id} updated in database for Azizkh07`);
-    res.json(result.rows[0]);
+
+    // Clean data
+    const cleanTitle = title ? String(title).trim() : existingSubject.rows[0].title;
+    const cleanDescription = description !== undefined ? (description ? String(description).trim() : null) : existingSubject.rows[0].description;
+    const cleanProfessorName = professor_name ? String(professor_name).trim() : existingSubject.rows[0].professor_name;
+    const cleanHours = hours !== undefined ? (hours ? parseFloat(String(hours)) : null) : existingSubject.rows[0].hours;
+    const cleanOrderIndex = order_index !== undefined ? parseInt(String(order_index)) : existingSubject.rows[0].order_index;
+
+    // Update subject
+    await query(`
+      UPDATE subjects 
+      SET title = ?, description = ?, professor_name = ?, hours = ?, order_index = ?, updated_at = NOW()
+      WHERE id = ?
+    `, [cleanTitle, cleanDescription, cleanProfessorName, cleanHours, cleanOrderIndex, id]);
+
+    // Get updated subject
+    const updatedSubject = await query(`
+      SELECT 
+        s.*,
+        c.title as course_title
+      FROM subjects s
+      LEFT JOIN courses c ON s.course_id = c.id
+      WHERE s.id = ?
+    `, [id]);
+
+    console.log(`✅ Subject ${id} updated successfully for Medsaidabidi02`);
+    res.status(200).json({
+      success: true,
+      data: updatedSubject.rows[0],
+      message: 'Subject updated successfully'
+    });
     
   } catch (error) {
-    console.error(`❌ Database error updating subject ${req.params.id} for Azizkh07:`, error);
+    console.error(`❌ Database error updating subject ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ 
+      success: false,
       message: 'Database error updating subject',
       error: error.message 
     });
   }
 });
 
-// DELETE subject - REAL DATABASE DELETE
-router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+// DELETE subject (soft delete)
+router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(`🗑️ DELETE /api/subjects/${id} - Real database deletion for Azizkh07 at 2025-08-20 13:40:09`);
-    console.log('👤 User:', req.user?.name || req.user?.email);
+    console.log(`🗑️ DELETE /api/subjects/${id} for Medsaidabidi02`);
     
-    // Check if subject exists and get its info
-    const subjectCheck = await pool.query('SELECT id, title, course_id FROM subjects WHERE id = $1', [id]);
-    if (subjectCheck.rows.length === 0) {
-      console.log(`❌ Subject ${id} not found for deletion by Azizkh07`);
-      return res.status(404).json({ message: 'Subject not found' });
-    }
-    
-    const subjectName = subjectCheck.rows[0].title;
-    const courseId = subjectCheck.rows[0].course_id;
-    console.log(`🎯 Deleting real subject for Azizkh07: "${subjectName}" (ID: ${id}) from course ${courseId}`);
-    
-    // Start transaction
-    await pool.query('BEGIN');
-    
-    try {
-      // Delete related videos first
-      console.log('🔄 Step 1: Deleting related videos from database...');
-      const videosDeleted = await pool.query('DELETE FROM videos WHERE subject_id = $1', [id]);
-      console.log(`✅ Deleted ${videosDeleted.rowCount || 0} real videos from database`);
-      
-      // Delete the subject
-      console.log('🔄 Step 2: Deleting subject from database...');
-      const subjectDeleted = await pool.query('DELETE FROM subjects WHERE id = $1 RETURNING *', [id]);
-      
-      if (subjectDeleted.rows.length === 0) {
-        throw new Error('Subject not found during deletion');
-      }
-      
-      // Commit transaction
-      await pool.query('COMMIT');
-      
-      console.log(`✅ Real subject "${subjectName}" (ID: ${id}) completely deleted from database for Azizkh07`);
-      res.json({ 
-        message: 'Subject and all related videos deleted successfully from database',
-        deletedSubject: subjectDeleted.rows[0],
-        deletedVideos: videosDeleted.rowCount || 0,
-        timestamp: '2025-08-20 13:40:09',
-        user: 'Azizkh07'
+    // Check if subject exists
+    const existingSubject = await query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
+    if (existingSubject.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Subject not found' 
       });
-      
-    } catch (deleteError) {
-      // Rollback transaction on error
-      await pool.query('ROLLBACK');
-      throw deleteError;
     }
+
+    // Soft delete
+    await query('UPDATE subjects SET is_active = false, updated_at = NOW() WHERE id = ?', [id]);
+
+    console.log(`✅ Subject ${id} deleted successfully for Medsaidabidi02`);
+    res.status(200).json({
+      success: true,
+      message: 'Subject deleted successfully'
+    });
     
   } catch (error) {
-    console.error(`❌ Database error deleting subject ${req.params.id} for Azizkh07:`, error);
+    console.error(`❌ Database error deleting subject ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ 
+      success: false,
       message: 'Database error deleting subject',
       error: error.message 
     });
   }
 });
 
-// Get subject with videos - REAL DATA ONLY
-router.get('/:id/videos', async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log(`📋 GET /api/subjects/${id}/videos - Real data for Azizkh07 at 2025-08-20 13:40:09`);
-    
-    const subjectResult = await pool.query('SELECT * FROM subjects WHERE id = $1', [id]);
-    if (subjectResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Subject not found' });
-    }
-    
-    const videosResult = await pool.query(`
-      SELECT * FROM videos 
-      WHERE subject_id = $1 AND is_active = true
-      ORDER BY order_index, created_at
-    `, [id]);
-    
-    console.log(`✅ Real data: Subject ${id} has ${videosResult.rows.length} videos for Azizkh07`);
-    res.json({
-      subject: subjectResult.rows[0],
-      videos: videosResult.rows
-    });
-    
-  } catch (error) {
-    console.error(`❌ Database error fetching subject videos for Azizkh07:`, error);
-    res.status(500).json({ 
-      message: 'Database error fetching subject videos',
-      error: error.message 
-    });
-  }
-});
-
 export default router;
+export { router as subjectsRoutes };
+
+console.log('📖 Subjects routes module loaded for Medsaidabidi02 at 2025-09-09 16:01:15');

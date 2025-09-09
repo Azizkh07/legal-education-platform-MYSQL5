@@ -68,7 +68,7 @@ export const upload = multer({
 
 // Helper functions
 export const uploadImage = async (file: Express.Multer.File): Promise<string> => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5001';
   return `${baseUrl}/uploads/images/${file.filename}`;
 };
 
@@ -78,7 +78,7 @@ export const uploadVideo = async (file: Express.Multer.File, videoKey: string): 
 };
 
 export const getSecureVideoUrl = async (videoPath: string): Promise<string> => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5001';
   return `${baseUrl}/${videoPath}`;
 };
 

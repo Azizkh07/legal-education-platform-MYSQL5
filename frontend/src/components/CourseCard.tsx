@@ -194,7 +194,7 @@ const CourseCard: React.FC<CourseCardProps> = ({
                             <div className="w-16 h-9 bg-gray-200 rounded mr-3 flex-shrink-0 overflow-hidden">
                               {video.thumbnail_path ? (
                                 <img 
-                                  src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/videos/thumbnail/${video.thumbnail_path}`}
+                                  src={`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/videos/thumbnail/${video.thumbnail_path}`}
                                   alt={video.title}
                                   className="w-full h-full object-cover"
                                 />

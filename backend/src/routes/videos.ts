@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { pool } from '../database/index';
+import { query } from '../database/index';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
 const router = Router();
 
-console.log('🎬 FIXED Videos API loaded for Azizkh07 - 2025-08-20 14:13:22');
+console.log('🎬 FIXED Videos API loaded for Medsaidabidi02 - 2025-09-09 17:15:30');
 
 // ✅ FIXED: Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
-      console.log(`📁 Created directory: ${uploadPath} for Azizkh07`);
+      console.log(`📁 Created directory: ${uploadPath} for Medsaidabidi02`);
     }
     
     cb(null, uploadPath);
@@ -34,14 +34,14 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
-    console.log(`📝 Generated filename for Azizkh07: ${filename}`);
+    console.log(`📝 Generated filename for Medsaidabidi02: ${filename}`);
     cb(null, filename);
   }
 });
 
 // File filter for validation
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  console.log(`🔍 Validating file for Azizkh07: ${file.fieldname} - ${file.originalname}`);
+  console.log(`🔍 Validating file for Medsaidabidi02: ${file.fieldname} - ${file.originalname}`);
   
   if (file.fieldname === 'video') {
     // Accept video files
@@ -74,17 +74,17 @@ const upload = multer({
 
 // Simple auth bypass for development
 const simpleAuth = (req: any, res: any, next: any) => {
-  console.log('🔓 Using simple auth bypass for videos - Azizkh07');
-  req.user = { id: 1, name: 'Azizkh07', email: 'admin@cliniquejuriste.com', is_admin: true };
+  console.log('🔓 Using simple auth bypass for videos - Medsaidabidi02');
+  req.user = { id: 1, name: 'Medsaidabidi02', email: 'admin@cliniquejuriste.com', is_admin: true };
   next();
 };
 
 // GET all videos with subject/course info
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 GET /api/videos - Real data for Azizkh07 at 2025-08-20 14:13:22');
+    console.log('📋 GET /api/videos - Real data for Medsaidabidi02 at 2025-09-09 17:15:30');
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         v.*,
         v.video_path,
@@ -106,11 +106,11 @@ router.get('/', async (req, res) => {
       video_path: video.video_path || video.file_path // Fallback to file_path if video_path is null
     }));
     
-    console.log(`✅ Found ${videos.length} videos for Azizkh07`);
+    console.log(`✅ Found ${videos.length} videos for Medsaidabidi02`);
     res.json(videos);
     
   } catch (error) {
-    console.error('❌ Database error for Azizkh07:', error);
+    console.error('❌ Database error for Medsaidabidi02:', error);
     res.status(500).json({ message: 'Database error fetching videos' });
   }
 });
@@ -118,24 +118,24 @@ router.get('/', async (req, res) => {
 // ✅ ADDED: GET /api/videos/admin/stats endpoint
 router.get('/admin/stats', async (req, res) => {
   try {
-    console.log('📊 GET /api/videos/admin/stats - Stats for Azizkh07 at 2025-08-20 14:13:22');
+    console.log('📊 GET /api/videos/admin/stats - Stats for Medsaidabidi02 at 2025-09-09 17:15:30');
     
     const [videosCount, subjectsWithVideos, totalSize] = await Promise.all([
       // Total and active videos
-      pool.query(`
+      query(`
         SELECT 
           COUNT(*) as total_videos,
           COUNT(CASE WHEN is_active = true THEN 1 END) as active_videos
         FROM videos
       `),
       // Subjects with videos
-      pool.query(`
+      query(`
         SELECT COUNT(DISTINCT subject_id) as subjects_with_videos 
         FROM videos 
         WHERE subject_id IS NOT NULL AND is_active = true
       `),
       // Total file size
-      pool.query(`
+      query(`
         SELECT COALESCE(SUM(file_size), 0) as total_size 
         FROM videos 
         WHERE is_active = true
@@ -149,11 +149,11 @@ router.get('/admin/stats', async (req, res) => {
       total_size: parseInt(totalSize.rows[0].total_size)
     };
     
-    console.log('✅ Video stats calculated for Azizkh07:', stats);
+    console.log('✅ Video stats calculated for Medsaidabidi02:', stats);
     res.json(stats);
     
   } catch (error) {
-    console.error('❌ Error calculating video stats for Azizkh07:', error);
+    console.error('❌ Error calculating video stats for Medsaidabidi02:', error);
     res.status(500).json({ message: 'Error calculating video statistics' });
   }
 });
@@ -162,9 +162,9 @@ router.get('/admin/stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 GET /api/videos/${id} - Real data for Azizkh07 at 2025-08-20 14:13:22`);
+    console.log(`📋 GET /api/videos/${id} - Real data for Medsaidabidi02 at 2025-09-09 17:15:30`);
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         v.*,
         v.video_path,
@@ -176,7 +176,7 @@ router.get('/:id', async (req, res) => {
       FROM videos v
       LEFT JOIN subjects s ON v.subject_id = s.id
       LEFT JOIN courses c ON s.course_id = c.id
-      WHERE v.id = $1
+      WHERE v.id = ?
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -188,16 +188,16 @@ router.get('/:id', async (req, res) => {
       video_path: result.rows[0].video_path || result.rows[0].file_path
     };
     
-    console.log(`✅ Found video ${id} for Azizkh07`);
+    console.log(`✅ Found video ${id} for Medsaidabidi02`);
     res.json(video);
     
   } catch (error) {
-    console.error(`❌ Database error fetching video ${req.params.id} for Azizkh07:`, error);
+    console.error(`❌ Database error fetching video ${req.params.id} for Medsaidabidi02:`, error);
     res.status(500).json({ message: 'Database error fetching video' });
   }
 });
 
-// ✅ FIXED: POST upload new video with database schema compatibility
+// ✅ ULTRA-FIXED: POST upload new video with bulletproof MySQL5 response handling
 router.post('/', simpleAuth, upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
@@ -206,7 +206,7 @@ router.post('/', simpleAuth, upload.fields([
     const { title, description, subject_id, is_active } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     
-    console.log('📤 POST /api/videos - Upload for Azizkh07 at 2025-08-20 14:13:22');
+    console.log('📤 POST /api/videos - Upload for Medsaidabidi02 at 2025-09-09 17:15:30');
     console.log('📝 Data:', { 
       title, 
       subject_id, 
@@ -217,6 +217,7 @@ router.post('/', simpleAuth, upload.fields([
     // Validate required fields
     if (!title || !subject_id) {
       return res.status(400).json({ 
+        success: false,
         message: 'Title and subject_id are required',
         received: { title: !!title, subject_id: !!subject_id }
       });
@@ -224,19 +225,21 @@ router.post('/', simpleAuth, upload.fields([
     
     if (!files?.video?.[0]) {
       return res.status(400).json({ 
+        success: false,
         message: 'Video file is required',
         files_received: files ? Object.keys(files) : 'none'
       });
     }
     
     // Check if subject exists
-    const subjectCheck = await pool.query(
-      'SELECT id, title FROM subjects WHERE id = $1', 
+    const subjectCheck = await query(
+      'SELECT id, title FROM subjects WHERE id = ?', 
       [subject_id]
     );
     
     if (subjectCheck.rows.length === 0) {
       return res.status(404).json({ 
+        success: false,
         message: 'Subject not found',
         subject_id: subject_id
       });
@@ -245,7 +248,7 @@ router.post('/', simpleAuth, upload.fields([
     const videoFile = files.video[0];
     const thumbnailFile = files.thumbnail?.[0];
     
-    console.log('📁 Files for Azizkh07:', {
+    console.log('📁 Files for Medsaidabidi02:', {
       video: {
         filename: videoFile.filename,
         size: (videoFile.size / (1024 * 1024)).toFixed(2) + ' MB',
@@ -259,48 +262,179 @@ router.post('/', simpleAuth, upload.fields([
     });
     
     // Get next order_index for this subject
-    const orderResult = await pool.query(
-      'SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM videos WHERE subject_id = $1',
+    const orderResult = await query(
+      'SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM videos WHERE subject_id = ?',
       [subject_id]
     );
     const orderIndex = orderResult.rows[0].next_order;
     
-    // ✅ FIXED: Insert video record with both video_path and file_path for compatibility
-    const result = await pool.query(`
-      INSERT INTO videos (
-        title, description, subject_id, video_path, file_path, thumbnail_path, 
-        file_size, duration, order_index, is_active, mime_type
-      )
-      VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `, [
-      title.trim(),
-      description?.trim() || '',
-      parseInt(subject_id),
-      videoFile.filename, // Both video_path and file_path get the same value
-      thumbnailFile?.filename || null,
-      videoFile.size,
-      0, // Duration will need to be calculated separately
-      orderIndex,
-      is_active !== 'false',
-      videoFile.mimetype
-    ]);
+    console.log('🔄 Inserting video into database...');
     
-    console.log('✅ Video uploaded successfully for Azizkh07:', {
-      id: result.rows[0].id,
-      title: result.rows[0].title,
-      video_path: result.rows[0].video_path,
-      file_path: result.rows[0].file_path,
-      subject_id: result.rows[0].subject_id
-    });
+    // ✅ ULTRA-FIXED: Use multiple approaches to ensure we get the video ID
+    let videoId = null;
+    let createdVideo = null;
     
-    res.status(201).json(result.rows[0]);
+    try {
+      // Approach 1: Try direct INSERT and get insertId
+      const insertResult = await query(`
+        INSERT INTO videos (
+          title, description, subject_id, video_path, file_path, thumbnail_path, 
+          file_size, duration, order_index, is_active, mime_type
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        title.trim(),
+        description?.trim() || '',
+        parseInt(subject_id),
+        videoFile.filename, // video_path
+        videoFile.filename, // file_path (same value for compatibility)
+        thumbnailFile?.filename || null,
+        videoFile.size,
+        0, // Duration will need to be calculated separately
+        orderIndex,
+        is_active !== 'false',
+        videoFile.mimetype
+      ]);
+      
+      console.log('✅ Insert result structure for Medsaidabidi02:', {
+        type: typeof insertResult,
+        keys: Object.keys(insertResult || {}),
+        insertResult: insertResult
+      });
+      
+      // Try multiple ways to extract the video ID
+      if (insertResult && typeof insertResult === 'object') {
+        // Method 1: Direct insertId property
+        if (insertResult.insertId) {
+          videoId = insertResult.insertId;
+          console.log('✅ Got video ID from insertResult.insertId:', videoId);
+        }
+        // Method 2: insertId in rows array
+        else if (insertResult.rows && insertResult.rows.length > 0 && insertResult.rows[0].insertId) {
+          videoId = insertResult.rows[0].insertId;
+          console.log('✅ Got video ID from insertResult.rows[0].insertId:', videoId);
+        }
+        // Method 3: Check if insertResult is the ID itself
+        else if (typeof insertResult === 'number') {
+          videoId = insertResult;
+          console.log('✅ Got video ID from direct result:', videoId);
+        }
+        // Method 4: Check affectedRows and get LAST_INSERT_ID
+        else if (insertResult.affectedRows && insertResult.affectedRows > 0) {
+          console.log('🔄 Affected rows > 0, trying LAST_INSERT_ID()...');
+          const lastIdResult = await query('SELECT LAST_INSERT_ID() as id');
+          console.log('✅ LAST_INSERT_ID result:', lastIdResult);
+          if (lastIdResult.rows && lastIdResult.rows[0] && lastIdResult.rows[0].id) {
+            videoId = lastIdResult.rows[0].id;
+            console.log('✅ Got video ID from LAST_INSERT_ID():', videoId);
+          }
+        }
+      }
+      
+      // Approach 2: If still no ID, try to find the most recent video with our exact data
+      if (!videoId) {
+        console.log('🔄 No video ID found, searching by video filename...');
+        const searchResult = await query(`
+          SELECT id FROM videos 
+          WHERE video_path = ? AND title = ? AND subject_id = ? 
+          ORDER BY created_at DESC 
+          LIMIT 1
+        `, [videoFile.filename, title.trim(), parseInt(subject_id)]);
+        
+        if (searchResult.rows && searchResult.rows.length > 0) {
+          videoId = searchResult.rows[0].id;
+          console.log('✅ Found video ID by searching:', videoId);
+        }
+      }
+      
+      // Approach 3: Last resort - get the most recent video
+      if (!videoId) {
+        console.log('🔄 Still no video ID, getting most recent video...');
+        const recentResult = await query('SELECT id FROM videos ORDER BY created_at DESC LIMIT 1');
+        if (recentResult.rows && recentResult.rows.length > 0) {
+          videoId = recentResult.rows[0].id;
+          console.log('⚠️ Using most recent video ID as fallback:', videoId);
+        }
+      }
+      
+      if (!videoId) {
+        throw new Error('Could not determine video ID after insert - all methods failed');
+      }
+      
+      // Now get the complete video data
+      console.log(`🔄 Fetching complete video data for ID: ${videoId}`);
+      const createdVideoResult = await query(`
+        SELECT 
+          v.*,
+          s.title as subject_title,
+          s.professor_name,
+          c.title as course_title,
+          c.id as course_id
+        FROM videos v
+        LEFT JOIN subjects s ON v.subject_id = s.id
+        LEFT JOIN courses c ON s.course_id = c.id
+        WHERE v.id = ?
+      `, [videoId]);
+      
+      if (!createdVideoResult.rows || createdVideoResult.rows.length === 0) {
+        throw new Error(`Video with ID ${videoId} was inserted but cannot be retrieved`);
+      }
+      
+      createdVideo = createdVideoResult.rows[0];
+      
+      console.log('✅ Video uploaded successfully for Medsaidabidi02:', {
+        id: createdVideo.id,
+        title: createdVideo.title,
+        video_path: createdVideo.video_path,
+        file_path: createdVideo.file_path,
+        subject_id: createdVideo.subject_id,
+        subject_title: createdVideo.subject_title
+      });
+      
+      // ✅ FIXED: Return comprehensive response structure
+      return res.status(201).json({
+        success: true,
+        message: 'Video uploaded successfully',
+        data: createdVideo,
+        // Also include video properties directly for backward compatibility
+        id: createdVideo.id,
+        title: createdVideo.title,
+        description: createdVideo.description,
+        video_path: createdVideo.video_path,
+        file_path: createdVideo.file_path,
+        thumbnail_path: createdVideo.thumbnail_path,
+        subject_id: createdVideo.subject_id,
+        file_size: createdVideo.file_size,
+        is_active: createdVideo.is_active,
+        created_at: createdVideo.created_at,
+        updated_at: createdVideo.updated_at,
+        // Include joined data
+        subject_title: createdVideo.subject_title,
+        course_title: createdVideo.course_title,
+        professor_name: createdVideo.professor_name,
+        course_id: createdVideo.course_id
+      });
+      
+    } catch (dbError) {
+      console.error('❌ Database operation failed for Medsaidabidi02:', dbError);
+      throw new Error(`Database operation failed: ${dbError.message}`);
+    }
     
   } catch (error) {
-    console.error('❌ Video upload error for Azizkh07:', error);
-    res.status(500).json({ 
+    console.error('❌ Video upload error for Medsaidabidi02:', error);
+    
+    // ✅ FIXED: Provide detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorStack = error instanceof Error ? error.stack : '';
+    
+    console.error('❌ Error stack for Medsaidabidi02:', errorStack);
+    
+    return res.status(500).json({ 
+      success: false,
       message: 'Video upload failed',
-      error: error.message 
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+      details: process.env.NODE_ENV === 'development' ? errorStack : undefined
     });
   }
 });
@@ -309,10 +443,10 @@ router.post('/', simpleAuth, upload.fields([
 router.delete('/:id', simpleAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`🗑️ DELETE /api/videos/${id} for Azizkh07 at 2025-08-20 14:13:22`);
+    console.log(`🗑️ DELETE /api/videos/${id} for Medsaidabidi02 at 2025-09-09 17:15:30`);
     
     // Get video info before deletion
-    const videoInfo = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
+    const videoInfo = await query('SELECT * FROM videos WHERE id = ?', [id]);
     
     if (videoInfo.rows.length === 0) {
       return res.status(404).json({ message: 'Video not found' });
@@ -321,7 +455,7 @@ router.delete('/:id', simpleAuth, async (req, res) => {
     const video = videoInfo.rows[0];
     
     // Delete video record from database
-    const result = await pool.query('DELETE FROM videos WHERE id = $1 RETURNING *', [id]);
+    await query('DELETE FROM videos WHERE id = ?', [id]);
     
     // Try to delete physical files (don't fail if files don't exist)
     try {
@@ -345,14 +479,14 @@ router.delete('/:id', simpleAuth, async (req, res) => {
       console.log('⚠️ Could not delete physical files (they may not exist):', fileError.message);
     }
     
-    console.log(`✅ Video ${id} deleted successfully for Azizkh07`);
+    console.log(`✅ Video ${id} deleted successfully for Medsaidabidi02`);
     res.json({ 
       message: 'Video deleted successfully', 
-      video: result.rows[0] 
+      video: { id, title: video.title }
     });
     
   } catch (error) {
-    console.error(`❌ Delete error for Azizkh07:`, error);
+    console.error(`❌ Delete error for Medsaidabidi02:`, error);
     res.status(500).json({ message: 'Failed to delete video' });
   }
 });
@@ -363,7 +497,7 @@ router.get('/stream/:filename', (req, res) => {
     const { filename } = req.params;
     const videoPath = path.join('uploads/videos', filename);
     
-    console.log(`🎬 Streaming video for Azizkh07: ${filename} at 2025-08-20 14:13:22`);
+    console.log(`🎬 Streaming video for Medsaidabidi02: ${filename} at 2025-09-09 17:15:30`);
     
     if (!fs.existsSync(videoPath)) {
       console.log(`❌ Video file not found: ${videoPath}`);
@@ -399,7 +533,7 @@ router.get('/stream/:filename', (req, res) => {
     }
     
   } catch (error) {
-    console.error(`❌ Video streaming error for Azizkh07:`, error);
+    console.error(`❌ Video streaming error for Medsaidabidi02:`, error);
     res.status(500).json({ message: 'Error streaming video' });
   }
 });
@@ -410,7 +544,7 @@ router.get('/thumbnail/:filename', (req, res) => {
     const { filename } = req.params;
     const thumbnailPath = path.join('uploads/thumbnails', filename);
     
-    console.log(`🖼️ Serving thumbnail for Azizkh07: ${filename} at 2025-08-20 14:13:22`);
+    console.log(`🖼️ Serving thumbnail for Medsaidabidi02: ${filename} at 2025-09-09 17:15:30`);
     
     if (!fs.existsSync(thumbnailPath)) {
       console.log(`❌ Thumbnail file not found: ${thumbnailPath}`);
@@ -420,7 +554,7 @@ router.get('/thumbnail/:filename', (req, res) => {
     res.sendFile(path.resolve(thumbnailPath));
     
   } catch (error) {
-    console.error(`❌ Thumbnail serving error for Azizkh07:`, error);
+    console.error(`❌ Thumbnail serving error for Medsaidabidi02:`, error);
     res.status(500).json({ message: 'Error serving thumbnail' });
   }
 });
@@ -429,4 +563,4 @@ router.get('/thumbnail/:filename', (req, res) => {
 export default router;
 export { router as videoRoutes };
 
-console.log('🎬 Video routes module loaded for Azizkh07 at 2025-08-20 14:13:22');
+console.log('🎬 Video routes module loaded for Medsaidabidi02 at 2025-09-09 17:15:30');

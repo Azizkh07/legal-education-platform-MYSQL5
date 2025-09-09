@@ -13,7 +13,7 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({
-  users,
+  users = [], // ✅ FIXED: Add default empty array
   onCreateUser,
   onApproveUser,
   onEditUser,
@@ -50,44 +50,73 @@ const UserManagement: React.FC<UserManagementProps> = ({
     is_approved: true
   });
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  // ✅ FIXED: Add safety checks for users array and user properties
+  const safeUsers = Array.isArray(users) ? users : [];
+  
+  const filteredUsers = safeUsers.filter(user => {
+    // ✅ FIXED: Add safety checks for user properties
+    if (!user || typeof user !== 'object') return false;
+    
+    const userName = user.name || '';
+    const userEmail = user.email || '';
+    const userIsApproved = user.is_approved !== undefined ? user.is_approved : false;
+    
+    const matchesSearch = userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         userEmail.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'all' ||
-                         (filterStatus === 'approved' && user.is_approved) ||
-                         (filterStatus === 'pending' && !user.is_approved);
+                         (filterStatus === 'approved' && userIsApproved) ||
+                         (filterStatus === 'pending' && !userIsApproved);
 
     return matchesSearch && matchesStatus;
   });
 
-  const pendingUsers = users.filter(user => !user.is_approved);
+  // ✅ FIXED: Add safety check for pendingUsers
+  const pendingUsers = safeUsers.filter(user => 
+    user && typeof user === 'object' && user.is_approved === false
+  );
 
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
-    onCreateUser(createForm);
-    setCreateForm({ name: '', email: '', password: '', is_admin: false, is_approved: true });
-    setShowCreateModal(false);
-    if (onRefresh) onRefresh();
+    try {
+      onCreateUser(createForm);
+      setCreateForm({ name: '', email: '', password: '', is_admin: false, is_approved: true });
+      setShowCreateModal(false);
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('❌ Error creating user for Medsaidabidi02:', error);
+      alert('Erreur lors de la création de l\'utilisateur');
+    }
   };
 
   const handleEditUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedUser) {
-      onEditUser(selectedUser.id, editForm);
-      setShowEditModal(false);
-      setSelectedUser(null);
-      if (onRefresh) onRefresh();
+    try {
+      if (selectedUser && selectedUser.id) {
+        onEditUser(selectedUser.id, editForm);
+        setShowEditModal(false);
+        setSelectedUser(null);
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      console.error('❌ Error editing user for Medsaidabidi02:', error);
+      alert('Erreur lors de la modification de l\'utilisateur');
     }
   };
 
   const openEditModal = (user: User) => {
+    // ✅ FIXED: Add safety checks for user properties
+    if (!user || typeof user !== 'object') {
+      console.error('❌ Invalid user object for editing:', user);
+      return;
+    }
+    
     setSelectedUser(user);
     setEditForm({
-      name: user.name,
-      email: user.email,
-      is_admin: user.is_admin,
-      is_approved: user.is_approved
+      name: user.name || '',
+      email: user.email || '',
+      is_admin: user.is_admin || false,
+      is_approved: user.is_approved !== undefined ? user.is_approved : false
     });
     setShowEditModal(true);
   };
@@ -103,23 +132,53 @@ const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const confirmDelete = () => {
-    if (pendingDeleteUserId !== null) {
-      onDeleteUser(pendingDeleteUserId);
-      if (onRefresh) onRefresh();
+    try {
+      if (pendingDeleteUserId !== null) {
+        onDeleteUser(pendingDeleteUserId);
+        if (onRefresh) onRefresh();
+      }
+    } catch (error) {
+      console.error('❌ Error deleting user for Medsaidabidi02:', error);
+      alert('Erreur lors de la suppression de l\'utilisateur');
+    } finally {
+      setShowDeleteConfirm(false);
+      setPendingDeleteUserId(null);
     }
-    setShowDeleteConfirm(false);
-    setPendingDeleteUserId(null);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      if (!dateString) return 'Date inconnue';
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('❌ Error formatting date for Medsaidabidi02:', error);
+      return 'Date invalide';
+    }
   };
+
+  // ✅ FIXED: Add loading state for when users is undefined
+  if (!Array.isArray(users)) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des utilisateurs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('👥 UserManagement rendered for Medsaidabidi02 at 2025-09-09 17:57:00', {
+    totalUsers: safeUsers.length,
+    filteredUsers: filteredUsers.length,
+    pendingUsers: pendingUsers.length
+  });
 
   return (
     <div className="space-y-6">
@@ -200,28 +259,35 @@ const UserManagement: React.FC<UserManagementProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.filter(u => !u.is_admin).map(user => (
+              {/* ✅ FIXED: Filter out admin users safely */}
+              {safeUsers.filter(u => u && typeof u === 'object' && !u.is_admin).map(user => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-blue-500 rounded-full flex items-center justify-center">
                         <span className="text-white font-medium text-sm">
-                          {user.name.charAt(0).toUpperCase()}
+                          {(user.name || 'U').charAt(0).toUpperCase()}
                         </span>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm font-medium text-gray-900">{user.name || 'Nom inconnu'}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email || 'Email inconnu'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{user.is_admin ? 'Admin' : 'Utilisateur'}</span>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {user.is_admin ? 'Admin' : 'Utilisateur'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.is_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{user.is_approved ? 'Approuvé' : 'En attente'}</span>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.is_approved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {user.is_approved ? 'Approuvé' : 'En attente'}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.created_at)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(user.created_at)}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       {!user.is_approved && (
@@ -271,7 +337,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
         )}
       </div>
 
-      {/* Create User Modal (unchanged) */}
+      {/* Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
@@ -283,29 +349,60 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet *</label>
-                <input type="text" required value={createForm.name} onChange={(e) => setCreateForm({...createForm, name: e.target.value})} className="input-field" placeholder="Nom de l'utilisateur" />
+                <input 
+                  type="text" 
+                  required 
+                  value={createForm.name} 
+                  onChange={(e) => setCreateForm({...createForm, name: e.target.value})} 
+                  className="input-field" 
+                  placeholder="Nom de l'utilisateur" 
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                <input type="email" required value={createForm.email} onChange={(e) => setCreateForm({...createForm, email: e.target.value})} className="input-field" placeholder="email@exemple.com" />
+                <input 
+                  type="email" 
+                  required 
+                  value={createForm.email} 
+                  onChange={(e) => setCreateForm({...createForm, email: e.target.value})} 
+                  className="input-field" 
+                  placeholder="email@exemple.com" 
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe *</label>
-                <input type="password" required value={createForm.password} onChange={(e) => setCreateForm({...createForm, password: e.target.value})} className="input-field" placeholder="Mot de passe" />
+                <input 
+                  type="password" 
+                  required 
+                  value={createForm.password} 
+                  onChange={(e) => setCreateForm({...createForm, password: e.target.value})} 
+                  className="input-field" 
+                  placeholder="Mot de passe" 
+                />
               </div>
 
               <div className="space-y-3">
-            
                 <label className="flex items-center">
-                  <input type="checkbox" checked={createForm.is_approved} onChange={(e) => setCreateForm({...createForm, is_approved: e.target.checked})} className="w-4 h-4" />
+                  <input 
+                    type="checkbox" 
+                    checked={createForm.is_approved} 
+                    onChange={(e) => setCreateForm({...createForm, is_approved: e.target.checked})} 
+                    className="w-4 h-4" 
+                  />
                   <span className="ml-2 text-sm text-gray-900">Compte approuvé</span>
                 </label>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Annuler</button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
                 <button type="submit" className="flex-1 btn-primary">Créer</button>
               </div>
             </form>
@@ -313,7 +410,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
         </div>
       )}
 
-      {/* Edit User Modal (unchanged) */}
+      {/* Edit User Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
@@ -325,25 +422,46 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <form onSubmit={handleEditUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet *</label>
-                <input type="text" required value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} className="input-field" />
+                <input 
+                  type="text" 
+                  required 
+                  value={editForm.name} 
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})} 
+                  className="input-field" 
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                <input type="email" required value={editForm.email} onChange={(e) => setEditForm({...editForm, email: e.target.value})} className="input-field" />
+                <input 
+                  type="email" 
+                  required 
+                  value={editForm.email} 
+                  onChange={(e) => setEditForm({...editForm, email: e.target.value})} 
+                  className="input-field" 
+                />
               </div>
 
               <div className="space-y-3">
-              
-
                 <label className="flex items-center">
-                  <input type="checkbox" checked={editForm.is_approved} onChange={(e) => setEditForm({...editForm, is_approved: e.target.checked})} className="w-4 h-4" />
+                  <input 
+                    type="checkbox" 
+                    checked={editForm.is_approved} 
+                    onChange={(e) => setEditForm({...editForm, is_approved: e.target.checked})} 
+                    className="w-4 h-4" 
+                  />
                   <span className="ml-2 text-sm text-gray-900">Compte approuvé</span>
                 </label>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Annuler</button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEditModal(false)} 
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
                 <button type="submit" className="flex-1 btn-primary">Sauvegarder</button>
               </div>
             </form>
@@ -352,14 +470,27 @@ const UserManagement: React.FC<UserManagementProps> = ({
       )}
 
       {/* Manage courses modal */}
-      <ManageUserCourses open={manageCoursesOpen} userId={manageUserId ?? 0} onClose={() => { setManageCoursesOpen(false); if (onRefresh) onRefresh(); }} onUpdated={() => { if (onRefresh) onRefresh(); }} />
+      <ManageUserCourses 
+        open={manageCoursesOpen} 
+        userId={manageUserId ?? 0} 
+        onClose={() => { 
+          setManageCoursesOpen(false); 
+          if (onRefresh) onRefresh(); 
+        }} 
+        onUpdated={() => { 
+          if (onRefresh) onRefresh(); 
+        }} 
+      />
 
       {/* Delete confirmation modal */}
       <ConfirmDialog
         open={showDeleteConfirm}
         title="Supprimer l'utilisateur"
         message="Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible."
-        onCancel={() => { setShowDeleteConfirm(false); setPendingDeleteUserId(null); }}
+        onCancel={() => { 
+          setShowDeleteConfirm(false); 
+          setPendingDeleteUserId(null); 
+        }}
         onConfirm={confirmDelete}
       />
     </div>
