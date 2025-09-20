@@ -169,6 +169,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Legal Education Platform API is running',
+    status: 'OK',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Catch-all for undefined routes
 app.use('/api/*', (req, res) => {
   console.log(`❌ 404: Route not found for Azizkh07: ${req.method} ${req.path}`);
@@ -180,13 +188,7 @@ app.use('/api/*', (req, res) => {
   });
 });
 // Add this route to handle root path
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Legal Education Platform API is running',
-    status: 'OK',
-    timestamp: new Date().toISOString()
-  });
-});
+
 // Global error handler
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('❌ Global error handler for Azizkh07:', error);
