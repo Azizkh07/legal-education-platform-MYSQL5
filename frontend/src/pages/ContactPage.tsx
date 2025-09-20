@@ -17,23 +17,13 @@ const ContactPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string>('');
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await api.post('/contact', form);
-      handleApiResponse(response);
-      setSuccess(true);
-      setForm({ name: '', email: '', subject: '', message: '' });
-    } catch (err) {
-      setError(getErrorMessage(err) || t('contact.error_generic', 'Failed to send message. Please try again later.'));
-    } finally {
-      setLoading(false);
-    }
+    // Simply show a message that the service is not available
+    setError(t('contact.service_unavailable', 'Contact form is currently unavailable. Please contact us directly at cliniquedesjuristes@gmail.com'));
   };
+
 
   const handleChange = (field: keyof ContactForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -180,25 +170,7 @@ const ContactPage: React.FC = () => {
                 </div>
 
                 {/* Hours */}
-                <div 
-                  className="contact-method-card"
-                  style={{ animationDelay: '0.4s' }}
-                >
-                  <div className="contact-method-content">
-                    <div className="contact-method-icon" aria-hidden>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                        <polyline points="12,6 12,12 16,14" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                    </div>
-                    <div className="contact-method-info">
-                      <h3>{t('contact.method_hours.title', 'Opening hours')}</h3>
-                      <p>{t('contact.method_hours.desc', 'Our availability hours')}</p>
-                      <div className="contact-detail" dangerouslySetInnerHTML={{ __html: t('contact.method_hours.detail', 'Mon-Fri: 9am-6pm<br/>Sat: 9am-1pm') }} />
-                    </div>
-                  </div>
-                  <div className="contact-method-glow" />
-                </div>
+             
               </div>
             </div>
 
