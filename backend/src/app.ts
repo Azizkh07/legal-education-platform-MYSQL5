@@ -20,8 +20,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // CORS configuration - explicit to allow Authorization header and preflight
 // ---------------------------------------------------------------------------
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://yourdomain.com']
-  : ['http://localhost:3000', 'http://localhost:3001'];
+? [
+  'https://cliniquedesjuristes.tech',
+  'https://www.cliniquedesjuristes.tech',
+  'https://legal-education-platform-git-cdb05e-medazizs-projects-8fbd1072.vercel.app'
+]
+: ['http://localhost:3000', 'http://localhost:3001'];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
