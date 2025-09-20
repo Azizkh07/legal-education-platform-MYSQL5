@@ -7,7 +7,7 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:simple": "ts-node src/server.ts",
-    "build": "tsc"
+    "build": "tsc && echo 'TypeScript compilation complete'"
   },
   "dependencies": {
     "axios": "^1.11.0",
