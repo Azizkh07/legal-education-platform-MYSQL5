@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { query } from '../database';
 
-console.log('🔐 FIXED Auth Middleware loaded for Medsaidabidi02 - 2025-09-09 15:21:41');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'legal-education-platform-super-secret-key-medsaidabidi02-2025-mysql5-version';
 

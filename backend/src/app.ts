@@ -20,8 +20,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // CORS configuration - explicit to allow Authorization header and preflight
 // ---------------------------------------------------------------------------
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://yourdomain.com'] // Reset to placeholder
-  : ['http://localhost:3000', 'http://localhost:3001'];
+? [
+  'https://yourdomain.com',
+]
+: ['http://localhost:3000', 'http://localhost:3001'];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
@@ -37,7 +39,7 @@ const corsOptions: cors.CorsOptions = {
     callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Session-Token'], // ✅ ADDED X-Session-Token
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
   credentials: true,
   optionsSuccessStatus: 204
@@ -52,7 +54,7 @@ app.use((req, res, next) => {
   const origin = req.header('origin') || '*';
   // In production you probably want to echo allowed origin only
   res.header('Access-Control-Allow-Origin', origin);
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-Token'); // ✅ ADDED X-Session-Token
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Credentials', 'true');
   // if this is a preflight request end it here
