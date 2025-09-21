@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { blogService, BlogPost } from '../lib/blog';
-import Footer from '../components/Footer';
 import Header from '../components/Header';
 import Loading from '../components/Loading';
 import '../styles/BlogPage.css';

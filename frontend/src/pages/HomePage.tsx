@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { courseService } from '../lib/courses';
 import { blogService } from '../lib/blog';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
 import Loading from '../components/Loading';
 import { resolveMediaUrl } from '../lib/media';
 import '../styles/HomePage.css';

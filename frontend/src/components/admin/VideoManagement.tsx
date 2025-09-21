@@ -476,7 +476,7 @@ const VideoManagement: React.FC = () => {
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="text-xs text-gray-400">
-                  ID: {video.id}
+                  
                 </div>
                 
                 <div className="flex space-x-2">
@@ -659,7 +659,6 @@ const VideoManagement: React.FC = () => {
                   <div className="space-y-2 text-sm">
                     <div><span className="font-medium text-gray-700">Créé le:</span> {new Date(selectedVideo.created_at).toLocaleString('fr-FR')}</div>
                     <div><span className="font-medium text-gray-700">Modifié le:</span> {new Date(selectedVideo.updated_at).toLocaleString('fr-FR')}</div>
-                    <div><span className="font-medium text-gray-700">ID:</span> {selectedVideo.id}</div>
                   </div>
                 </div>
               </div>
@@ -667,23 +666,9 @@ const VideoManagement: React.FC = () => {
               {/* Action Buttons */}
               <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-200">
                 <div className="flex space-x-3">
-                  <a
-                    href={`/api/videos/stream/${selectedVideo.video_path}`}
-                    download={selectedVideo.title}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    📥 Télécharger
-                  </a>
+              
                   
-                  {selectedVideo.thumbnail_path && (
-                    <a
-                      href={`/api/videos/thumbnail/${selectedVideo.thumbnail_path}`}
-                      download={`${selectedVideo.title}_thumbnail`}
-                      className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      🖼️ Miniature
-                    </a>
-                  )}
+              
                 </div>
 
                 <div className="flex space-x-3">

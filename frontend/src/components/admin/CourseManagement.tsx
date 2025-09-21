@@ -227,7 +227,6 @@ const CourseManagement: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading REAL courses from database...</p>
-          <p className="text-xs text-gray-500 mt-2">Azizkh07 | 2025-08-20 12:57:15 | NO MOCK DATA</p>
         </div>
       </div>
     );

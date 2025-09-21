@@ -115,6 +115,11 @@ const Header: React.FC = () => {
         <Link to="/blog" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('nav.blog', 'Articles')}</Link>
         <Link to="/contact" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('nav.contact', 'Contact')}</Link>
 
+        {/* Add Language Switcher to mobile menu */}
+        <div style={{ padding: '10px 20px', borderTop: '1px solid rgba(34, 197, 94, 0.1)', borderBottom: '1px solid rgba(34, 197, 94, 0.1)', margin: '10px 0' }}>
+          <LanguageSwitcher />
+        </div>
+
         {isAuthenticated && user ? (
           <>
             <div style={{ margin: '20px 0', borderTop: '1px solid rgba(34, 197, 94, 0.1)' }} />

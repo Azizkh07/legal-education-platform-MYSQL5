@@ -249,24 +249,7 @@ const SubjectForm: React.FC<SubjectFormProps> = ({
             </div>
 
             {/* Active Status */}
-            <div>
-              <label className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={formData.is_active}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                  disabled={loading}
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Matière active
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 mt-1 ml-7">
-                Les matières inactives ne sont pas visibles aux étudiants
-              </p>
-            </div>
+   
 
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">

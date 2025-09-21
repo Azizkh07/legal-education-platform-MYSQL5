@@ -501,19 +501,7 @@ const VideoUploadForm: React.FC<VideoUploadFormProps> = ({ onSuccess, onCancel, 
                     />
                   </div>
 
-                  <div>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        name="is_active"
-                        checked={formData.is_active}
-                        onChange={handleInputChange}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        disabled={loading}
-                      />
-                      <span className="text-sm text-gray-700">Vidéo active (visible aux utilisateurs)</span>
-                    </label>
-                  </div>
+            
                 </div>
               </div>
 

@@ -209,19 +209,7 @@ const CourseForm: React.FC<CourseFormProps> = ({ isOpen, onClose, onSuccess, edi
             </div>
 
             {/* Course Status */}
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={formData.is_active}
-                  onChange={handleInputChange}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  disabled={loading}
-                />
-                <span className="text-sm text-gray-700">Cours actif (visible aux utilisateurs)</span>
-              </label>
-            </div>
+     
 
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">

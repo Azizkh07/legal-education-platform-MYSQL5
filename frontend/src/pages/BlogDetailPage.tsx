@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { blogService, BlogPost } from '../lib/blog';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
 import '../styles/BlogDetailPage.css';
 import DOMPurify from 'dompurify';
 
@@ -140,7 +139,6 @@ const BlogDetailPage: React.FC = () => {
       <div className="blog-detail-container">
         <Header />
         <LoadingSpinner />
-        <Footer />
       </div>
     );
   }
@@ -156,7 +154,6 @@ const BlogDetailPage: React.FC = () => {
             <Link to="/blog" className="blog-error-back-btn">← {t('blog.back_to_list', 'Back to articles')}</Link>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
