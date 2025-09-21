@@ -20,12 +20,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // CORS configuration - explicit to allow Authorization header and preflight
 // ---------------------------------------------------------------------------
 const allowedOrigins = process.env.NODE_ENV === 'production'
-? [
-  'https://cliniquedesjuristes.tech',
-  'https://www.cliniquedesjuristes.tech',
-  'https://legal-education-platform-git-cdb05e-medazizs-projects-8fbd1072.vercel.app'
-]
-: ['http://localhost:3000', 'http://localhost:3001'];
+  ? ['https://yourdomain.com'] // Reset to placeholder
+  : ['http://localhost:3000', 'http://localhost:3001'];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
@@ -166,14 +162,6 @@ app.get('/api/health', (req, res) => {
     user: 'Azizkh07',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Legal Education Platform API is running',
-    status: 'OK',
-    timestamp: new Date().toISOString()
   });
 });
 
