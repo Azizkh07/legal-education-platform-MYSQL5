@@ -122,9 +122,6 @@ const Header: React.FC = () => {
 
         {isAuthenticated && user ? (
           <>
-            <div style={{ margin: '20px 0', borderTop: '1px solid rgba(34, 197, 94, 0.1)' }} />
-            <Link to="/dashboard" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.dashboard', 'Tableau de bord')}</Link>
-            <Link to="/profile" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.profile', 'Mon profil')}</Link>
             {user?.is_admin && <Link to="/admin" className="mobile-nav-link" onClick={() => setIsMenuOpen(false)}>{t('header.admin', 'Administration')}</Link>}
             <button 
               onClick={() => { handleLogout(); setIsMenuOpen(false); }} 

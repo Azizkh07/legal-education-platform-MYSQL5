@@ -142,8 +142,9 @@ const ContactPage: React.FC = () => {
                     <div className="contact-method-info mobile-method-info">
                       <h3 className="mobile-method-title">{t('contact.method_phone.title', 'Phone')}</h3>
                       <p className="mobile-method-desc">{t('contact.method_phone.desc', 'Call us directly')}</p>
-                      <div className="contact-detail mobile-contact-detail">+216 56 614 717</div>
-                    </div>
+                      <div className="contact-detail mobile-contact-detail">
+  <span className="ltr-number">+216 56 614 717</span>
+</div>                    </div>
                   </div>
                   <div className="contact-method-glow" />
                 </div>

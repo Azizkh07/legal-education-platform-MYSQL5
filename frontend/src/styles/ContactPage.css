@@ -1059,3 +1059,10 @@
     font-size: 1.8rem !important;
   }
 }
+
+.ltr-number {
+  direction: ltr;
+  unicode-bidi: isolate; /* isolate keeps it from inheriting bidi embedding */
+  display: inline-block; /* keeps grouping intact */
+  white-space: nowrap; /* prevents awkward wrapping inside the phone string */
+}

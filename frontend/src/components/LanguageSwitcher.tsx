@@ -9,8 +9,6 @@ type LangDef = {
   svg: React.ReactNode;
 };
 
-/* Inline SVGs for France, UK and Tunisia.
-   Tunisia SVG replaced with the Twemoji/TN markup you provided. */
 const FrFlag = (
   <svg viewBox="0 0 3 2" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden focusable="false">
     <title>Français</title>
@@ -33,7 +31,6 @@ const UkFlag = (
   </svg>
 );
 
-/* Correct Tunisian flag SVG (from the Twemoji snippet you provided) */
 const TnFlag = (
   <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden focusable="false">
     <title>العربية</title>
@@ -44,7 +41,6 @@ const TnFlag = (
   </svg>
 );
 
-/* language definitions */
 const LANGS: LangDef[] = [
   { code: 'fr', label: 'Français', svg: FrFlag },
   { code: 'en', label: 'English', svg: UkFlag },
@@ -54,7 +50,6 @@ const LANGS: LangDef[] = [
 const LanguageSwitcher: React.FC = () => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = i18n.language || (typeof window !== 'undefined' ? (localStorage.getItem('i18nextLng') || 'fr') : 'fr');
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -65,6 +60,9 @@ const LanguageSwitcher: React.FC = () => {
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, []);
+
+  // Use i18n.language (it will be 'fr' by default based on i18n.ts)
+  const current = i18n.language || (typeof window !== 'undefined' ? (localStorage.getItem('i18nextLng') || 'fr') : 'fr');
 
   const changeLanguage = (lng: string) => {
     if (!lng) return;

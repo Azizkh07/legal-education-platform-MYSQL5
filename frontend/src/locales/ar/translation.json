@@ -1,6 +1,6 @@
 {
-  "site_title": "عيادة الحقوقيين",
-  "logo_alt": "شعار عيادة الحقوقيين",
+  "site_title": "Clinique des Juristes",
+  "logo_alt": "شعار Clinique des Juristes",
   "language_switcher": "اللغة",
   "nav": {
     "home": "الرئيسية",
@@ -50,7 +50,7 @@
     "title_part3": "الحديث،",
     "title_accent": "في متناول اليد",
     "title_aria": "التعليم القانوني الحديث في متناول اليد",
-    "description": "عيادة الحقوقيين - كل التخصصات القانونية. دورات متخصصة وحديثة لمساعدتك على النجاح.",
+    "description": "Clinique des Juristes - كل التخصصات القانونية. دورات متخصصة وحديثة لمساعدتك على النجاح.",
     "image_alt": "خريج"
   },
   "buttons": {
@@ -58,7 +58,7 @@
     "contact_us": "اتصل بنا"
   },
   "why": {
-    "title": "لماذا تختار عيادة الحقوقيين"
+    "title": "لماذا تختار Clinique des Juristes"
   },
   "features": {
     "title1": "محتوى منظم وواضح",
@@ -123,7 +123,7 @@
     "detail_unavailable_message": "المقال غير متوفر",
     "back_to_list": "العودة إلى المقالات",
     "author_alt": "المؤلف",
-    "author_default": "عيادة الحقوقيين"
+    "author_default": "Clinique des Juristes"
   },
   "contact": {
     "hero_title": "اتصل بنا",

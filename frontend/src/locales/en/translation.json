@@ -1,6 +1,6 @@
 {
-  "site_title": "Legal Clinic",
-  "logo_alt": "Legal Clinic Logo",
+  "site_title": "Clinique des Juristes",
+  "logo_alt": "Clinique des Juristes Logo",
   "language_switcher": "Language",
   "nav": {
     "home": "Home",
@@ -50,7 +50,7 @@
     "title_part3": "Modern,",
     "title_accent": "At Your Fingertips",
     "title_aria": "Modern legal education at your fingertips",
-    "description": "Legal Clinic - All legal disciplines. Modern expert-led courses to help you succeed.",
+    "description": "Clinique des Juristes - All legal disciplines. Modern expert-led courses to help you succeed.",
     "image_alt": "Graduate"
   },
   "buttons": {
@@ -58,7 +58,7 @@
     "contact_us": "Contact us"
   },
   "why": {
-    "title": "Why choose Legal Clinic"
+    "title": "Why choose Clinique des Juristes"
   },
   "features": {
     "title1": "Structured, clear content",
@@ -123,7 +123,7 @@
     "detail_unavailable_message": "Article not available",
     "back_to_list": "Back to articles",
     "author_alt": "Author",
-    "author_default": "Legal Clinic"
+    "author_default": "Clinique des Juristes"
   },
   "contact": {
     "hero_title": "Contact Us",
