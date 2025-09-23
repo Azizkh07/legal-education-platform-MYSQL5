@@ -1,3 +1,4 @@
 # ignore environment file and uploaded files
 .env
+.env.production
 uploads/
