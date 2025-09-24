@@ -54,6 +54,6 @@ export const APP_INFO = {
 export const ENV_CONFIG = {
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
-  API_DEBUG: process.env.NEXT_PUBLIC_DEBUG_API === 'true',
-  AUTH_DEBUG: process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true',
+  API_DEBUG: process.env.REACT_APP_DEBUG_API === 'true',
+  AUTH_DEBUG: process.env.REACT_APP_DEBUG_AUTH === 'true',
 };

@@ -171,4 +171,4 @@ export class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001');
+export const apiClient = new ApiClient();
