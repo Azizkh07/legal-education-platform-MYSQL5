@@ -238,7 +238,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
   // Get video stream URL
   const getVideoUrl = () => {
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
     // ✅ FIXED: Use video_path instead of file_path
     const filename = video.video_path.split('/').pop();
     return `${baseUrl}/api/videos/stream/${filename}`;
