@@ -2,6 +2,7 @@ backend.zip
 # Environment files
 .env
 .env.*
+.env.production
 !.env.example   # keep an example file (optional)
 
 # Dependencies
