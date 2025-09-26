@@ -249,7 +249,7 @@ router.post('/upload-image', authenticateToken, upload.single('image'), async (r
 });
 
 // GET /api/blog/:id - Get single blog post
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', optionalAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     console.log(`📋 GET /api/blog/${id} - Fetching single post for Medsaidabidi02 at 2025-09-09 15:15:29`);
