@@ -246,3 +246,4 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 export default app;
 
 console.log('✅ App configuration completed at', new Date().toISOString());
+
