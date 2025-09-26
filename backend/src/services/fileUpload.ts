@@ -7,9 +7,11 @@ import crypto from 'crypto';
 const uploadsDir = path.join(__dirname, '../../uploads');
 const imagesDir = path.join(uploadsDir, 'images');
 const videosDir = path.join(uploadsDir, 'videos');
+const blogDir = path.join(uploadsDir, 'blog');        // Add this
+const thumbnailsDir = path.join(uploadsDir, 'thumbnails');  // Add this
 
 // Ensure directories exist
-[uploadsDir, imagesDir, videosDir].forEach(dir => {
+[uploadsDir, imagesDir, videosDir, blogDir, thumbnailsDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
     console.log(`📁 Created directory: ${dir}`);
@@ -21,8 +23,12 @@ export const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'video') {
       cb(null, videosDir);
-    } else if (file.fieldname === 'cover_image' || file.fieldname === 'image') {
-      cb(null, imagesDir);
+    } else if (file.fieldname === 'thumbnail') {
+      cb(null, thumbnailsDir);  // Use thumbnails directory
+    } else if (file.fieldname === 'cover_image') {
+      cb(null, blogDir);        // Use blog directory for blog images
+    } else if (file.fieldname === 'image') {
+      cb(null, imagesDir);      // Keep general images in images directory
     } else {
       cb(null, uploadsDir);
     }
@@ -33,6 +39,7 @@ export const storage = multer.diskStorage({
   }
 });
 
+// File filter for security
 // File filter for security
 export const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
   // Allowed image types
@@ -46,17 +53,18 @@ export const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
     } else {
       cb(new Error('Invalid video format. Only MP4, AVI, MOV, WMV, WEBM allowed.'));
     }
-  } else if (file.fieldname === 'cover_image' || file.fieldname === 'image') {
+  } else if (file.fieldname === 'thumbnail' || file.fieldname === 'cover_image' || file.fieldname === 'image') {
+    // ✅ FIXED: Added 'thumbnail' to allowed field names
     if (allowedImageTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error('Invalid image format. Only JPG, PNG, WEBP allowed.'));
     }
   } else {
-    cb(new Error('Unknown file field.'));
+    // ✅ IMPROVED: Show what field names are allowed in error
+    cb(new Error(`Unknown file field '${file.fieldname}'. Allowed fields: video, thumbnail, cover_image, image`));
   }
 };
-
 // Upload configuration
 export const upload = multer({
   storage: storage,
@@ -68,7 +76,7 @@ export const upload = multer({
 
 // Helper functions
 export const uploadImage = async (file: Express.Multer.File): Promise<string> => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5001';
+  const baseUrl = process.env.BASE_URL || process.env.API_URL || 'http://localhost:5001';
   return `${baseUrl}/uploads/images/${file.filename}`;
 };
 
@@ -78,7 +86,7 @@ export const uploadVideo = async (file: Express.Multer.File, videoKey: string): 
 };
 
 export const getSecureVideoUrl = async (videoPath: string): Promise<string> => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5001';
+  const baseUrl = process.env.BASE_URL || process.env.API_URL || 'http://localhost:5001';
   return `${baseUrl}/${videoPath}`;
 };
 

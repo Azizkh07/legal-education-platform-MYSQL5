@@ -7,7 +7,8 @@
 
 type JsonObject = { [key: string]: any };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+// FIXED: Use the correct backend URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 class ApiClient {
   private baseUrl: string;
@@ -70,6 +71,12 @@ class ApiClient {
       if ('success' in response && response.success && 'result' in response) {
         console.log('✅ Extracting result from success response for Medsaidabidi02');
         return response.result as T;
+      }
+
+      // For video responses, check for direct video data
+      if ('id' in response && 'title' in response && 'video_path' in response) {
+        console.log('✅ Detected video response format for Medsaidabidi02');
+        return response as T;
       }
     }
     
@@ -293,7 +300,9 @@ class ApiClient {
           try {
             const parsed = xhr.responseText ? JSON.parse(xhr.responseText) : null;
             message = parsed?.message || parsed?.error || message;
-          } catch (_) {}
+          } catch (_) {
+            message = `Upload failed: ${xhr.status} ${xhr.responseText}`;
+          }
           console.error(`❌ Upload failed for ${getCurrentUserTag()}:`, message);
           reject(new Error(message));
         }

@@ -104,8 +104,8 @@ const BlogManagement: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, searchTerm]);
 
-  const handleAuthError = (err: any) => {
-    const msg = err?.message || String(err);
+  const handleAuthError = (err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
     if (msg.toLowerCase().includes('token expired') || msg.toLowerCase().includes('access token required')) {
       alert('Votre session a expiré. Veuillez vous reconnecter.');
       api.clearAuthData();
@@ -120,27 +120,33 @@ const BlogManagement: React.FC = () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-
+  
       if (filter !== 'all') {
         params.append('published', filter === 'published' ? 'true' : 'false');
       }
-
+  
       if (searchTerm) {
         params.append('search', searchTerm);
       }
-
+  
       console.log('🔍 Fetching posts...');
-      const data = await api.get<{ success: boolean; posts?: BlogPost[]; error?: any }>(`/blog?${params.toString()}`);
-
-      // The API client returns parsed JSON. Adjust to your API shape.
-      if (data && (data as any).success) {
-        setPosts((data as any).posts || []);
+      const data = await api.get(`/blog?${params.toString()}`);
+  
+      // FIX: Your API client already extracts the data, so data is the posts array directly
+      console.log('✅ Posts received:', Array.isArray(data) ? data.length + ' posts' : 'unexpected format');
+      
+      if (Array.isArray(data)) {
+        setPosts(data);
+      } else if (data && typeof data === 'object' && 'posts' in data) {
+        setPosts(data.posts || []);
+      } else if (data && typeof data === 'object' && 'data' in data) {
+        setPosts(data.data || []);
       } else {
-        console.error('❌ API returned error when fetching posts:', data);
+        console.warn('⚠️ Unexpected posts response format:', typeof data);
         setPosts([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching posts:', error);
+      console.error('❌ ACTUAL error fetching posts:', error);
       if (handleAuthError(error)) return;
       setPosts([]);
     } finally {
@@ -151,18 +157,23 @@ const BlogManagement: React.FC = () => {
   const fetchStats = async () => {
     try {
       console.log('📊 Fetching stats...');
-      // admin stats endpoint
-      const data = await api.get<{ success: boolean; stats?: BlogStats; error?: any }>(`/blog/admin/stats`);
-
-      if (data && (data as any).success) {
-        setStats((data as any).stats || {
-          total_posts: 0,
-          published_posts: 0,
-          draft_posts: 0,
-          total_authors: 0
+      const data = await api.get(`/blog/admin/stats`);
+  
+      // FIX: Your API client already extracts the data, so data is the stats object directly
+      console.log('✅ Stats received:', data);
+      
+      // Check if it's already a stats object with expected properties
+      if (data && typeof data === 'object' && ('total_posts' in data || 'stats' in data)) {
+        // If it's wrapped in a stats property, extract it
+        const statsData = 'stats' in data ? data.stats : data;
+        setStats({
+          total_posts: statsData.total_posts || 0,
+          published_posts: statsData.published_posts || 0,
+          draft_posts: statsData.draft_posts || 0,
+          total_authors: statsData.total_authors || 0
         });
       } else {
-        console.error('❌ Stats API returned error:', data);
+        console.warn('⚠️ Unexpected stats response format:', typeof data);
         setStats({
           total_posts: 0,
           published_posts: 0,
@@ -171,7 +182,7 @@ const BlogManagement: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error fetching stats:', error);
+      console.error('❌ ACTUAL error fetching stats:', error);
       if (handleAuthError(error)) return;
       setStats({
         total_posts: 0,
@@ -181,33 +192,42 @@ const BlogManagement: React.FC = () => {
       });
     }
   };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     try {
       console.log('💾 BlogManagement: Submitting form data:', formData);
-
+  
       const payload = new FormData();
       payload.append('title', formData.title);
       payload.append('content', formData.content);
       payload.append('excerpt', formData.excerpt);
       payload.append('published', String(formData.published));
-
+  
       if (formData.cover_image) {
         payload.append('cover_image', formData.cover_image);
       }
-
+  
       const endpoint = selectedPost ? `/blog/${selectedPost.id}` : '/blog';
       console.log(`🚀 BlogManagement: ${selectedPost ? 'PUT' : 'POST'} request to: ${endpoint}`);
-
-      // api.post/put will attach auth header and handle FormData correctly
+  
       const result = selectedPost
-        ? await api.put<{ success: boolean; post?: BlogPost; error?: any }>(endpoint, payload)
-        : await api.post<{ success: boolean; post?: BlogPost; error?: any }>(endpoint, payload);
-
-      // result is parsed JSON (api client returns parsed body)
-      if (result && (result as any).success) {
+        ? await api.put(endpoint, payload)
+        : await api.post(endpoint, payload);
+  
+      // FIX: Your API client extracts the data, so result is the post object or success response
+      console.log('✅ Save result:', result);
+      
+      // Check for success indicators
+      const isSuccess = (result && typeof result === 'object' && (
+        ('success' in result && result.success) ||
+        ('id' in result && 'title' in result) || // Direct post object
+        ('post' in result && result.post) // Wrapped post object
+      ));
+  
+      if (isSuccess) {
         alert(`✅ Article ${selectedPost ? 'modifié' : 'créé'} avec succès!`);
         setShowEditor(false);
         setSelectedPost(null);
@@ -215,12 +235,11 @@ const BlogManagement: React.FC = () => {
         fetchPosts();
         fetchStats();
       } else {
-        console.error('❌ BlogManagement: API error when saving post:', result);
-        if ((result as any)?.error) alert(`❌ Erreur: ${(result as any).error}`);
-        else alert('❌ Erreur lors de la sauvegarde.');
+        console.error('❌ BlogManagement: Unexpected save response:', result);
+        alert('❌ Erreur lors de la sauvegarde.');
       }
     } catch (error) {
-      console.error('❌ BlogManagement: Error saving post:', error);
+      console.error('❌ BlogManagement: ACTUAL error saving post:', error);
       if (handleAuthError(error)) return;
       alert('❌ Erreur lors de la sauvegarde. Vérifiez que le backend est en marche.');
     }
@@ -236,27 +255,41 @@ const BlogManagement: React.FC = () => {
 
   const handleDeleteConfirm = async () => {
     if (!confirmModal.postId) return;
-
+  
     try {
-      const result = await api.delete<{ success: boolean; error?: any }>(`/blog/${confirmModal.postId}`);
-
-      if (result && (result as any).success) {
-        alert('✅ Article supprimé avec succès!');
+      const result = await api.delete(`/blog/${confirmModal.postId}`);
+  
+      // Debug: Log the actual result to understand what your API returns
+      console.log('🔍 Delete result type:', typeof result);
+      console.log('🔍 Delete result value:', result);
+      console.log('🔍 Delete result keys:', result && typeof result === 'object' ? Object.keys(result) : 'not an object');
+  
+      // For DELETE operations, if no error was thrown, it's typically successful
+      // Most REST APIs return 204 (no content) or 200 with minimal response for successful deletes
+      
+      // If we reach here without throwing, the delete was successful
+      alert('✅ Article supprimé avec succès!');
+      fetchPosts();
+      fetchStats();
+  
+    } catch (error: unknown) {
+      console.error('❌ ACTUAL error deleting post:', error);
+      if (handleAuthError(error)) return;
+      
+      // Check if it's actually a "not found" error vs server error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+        alert('⚠️ Article introuvable (peut-être déjà supprimé)');
+        // Refresh the list anyway to sync with server state
         fetchPosts();
         fetchStats();
       } else {
-        console.error('❌ Delete error:', result);
-        alert(`❌ Erreur: ${(result as any)?.error || 'Impossible de supprimer l\'article'}`);
+        alert('❌ Erreur lors de la suppression');
       }
-    } catch (error) {
-      console.error('❌ Error deleting post:', error);
-      if (handleAuthError(error)) return;
-      alert('❌ Erreur lors de la suppression');
     } finally {
       setConfirmModal({ isOpen: false, postId: null, postTitle: '' });
     }
   };
-
   const handleDeleteCancel = () => {
     setConfirmModal({ isOpen: false, postId: null, postTitle: '' });
   };

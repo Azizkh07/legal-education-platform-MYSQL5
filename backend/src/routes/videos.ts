@@ -1,76 +1,13 @@
 import { Router } from 'express';
-import { query } from '../database/index';
-import multer from 'multer';
+import { upload } from '../services/fileUpload';
+
 import path from 'path';
 import fs from 'fs';
+import database from '../config/database';
 
 const router = Router();
 
 console.log('🎬 FIXED Videos API loaded for Medsaidabidi02 - 2025-09-09 17:15:30');
-
-// ✅ FIXED: Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let uploadPath = '';
-    
-    if (file.fieldname === 'video') {
-      uploadPath = 'uploads/videos';
-    } else if (file.fieldname === 'thumbnail') {
-      uploadPath = 'uploads/thumbnails';
-    } else {
-      uploadPath = 'uploads';
-    }
-    
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-      console.log(`📁 Created directory: ${uploadPath} for Medsaidabidi02`);
-    }
-    
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
-    console.log(`📝 Generated filename for Medsaidabidi02: ${filename}`);
-    cb(null, filename);
-  }
-});
-
-// File filter for validation
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  console.log(`🔍 Validating file for Medsaidabidi02: ${file.fieldname} - ${file.originalname}`);
-  
-  if (file.fieldname === 'video') {
-    // Accept video files
-    if (file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only video files are allowed for video field'));
-    }
-  } else if (file.fieldname === 'thumbnail') {
-    // Accept image files
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed for thumbnail field'));
-    }
-  } else {
-    cb(new Error('Unexpected field'));
-  }
-};
-
-// ✅ FIXED: Create multer instance with proper configuration
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 20 * 1024 * 1024 * 1024, // 20GB for videos
-    fieldSize: 10 * 1024 * 1024 // 10MB for other fields
-  }
-});
 
 // Simple auth bypass for development
 const simpleAuth = (req: any, res: any, next: any) => {
@@ -84,7 +21,7 @@ router.get('/', async (req, res) => {
   try {
     console.log('📋 GET /api/videos - Real data for Medsaidabidi02 at 2025-09-09 17:15:30');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         v.*,
         v.video_path,
@@ -122,20 +59,20 @@ router.get('/admin/stats', async (req, res) => {
     
     const [videosCount, subjectsWithVideos, totalSize] = await Promise.all([
       // Total and active videos
-      query(`
+      database.query(`
         SELECT 
           COUNT(*) as total_videos,
           COUNT(CASE WHEN is_active = true THEN 1 END) as active_videos
         FROM videos
       `),
       // Subjects with videos
-      query(`
+      database.query(`
         SELECT COUNT(DISTINCT subject_id) as subjects_with_videos 
         FROM videos 
         WHERE subject_id IS NOT NULL AND is_active = true
       `),
       // Total file size
-      query(`
+      database.query(`
         SELECT COALESCE(SUM(file_size), 0) as total_size 
         FROM videos 
         WHERE is_active = true
@@ -164,7 +101,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     console.log(`📋 GET /api/videos/${id} - Real data for Medsaidabidi02 at 2025-09-09 17:15:30`);
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         v.*,
         v.video_path,
@@ -232,7 +169,7 @@ router.post('/', simpleAuth, upload.fields([
     }
     
     // Check if subject exists
-    const subjectCheck = await query(
+    const subjectCheck = await database.query(
       'SELECT id, title FROM subjects WHERE id = ?', 
       [subject_id]
     );
@@ -262,7 +199,7 @@ router.post('/', simpleAuth, upload.fields([
     });
     
     // Get next order_index for this subject
-    const orderResult = await query(
+    const orderResult = await database.query(
       'SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM videos WHERE subject_id = ?',
       [subject_id]
     );
@@ -276,7 +213,7 @@ router.post('/', simpleAuth, upload.fields([
     
     try {
       // Approach 1: Try direct INSERT and get insertId
-      const insertResult = await query(`
+      const insertResult = await database.query(`
         INSERT INTO videos (
           title, description, subject_id, video_path, file_path, thumbnail_path, 
           file_size, duration, order_index, is_active, mime_type
@@ -322,7 +259,7 @@ router.post('/', simpleAuth, upload.fields([
         // Method 4: Check affectedRows and get LAST_INSERT_ID
         else if (insertResult.affectedRows && insertResult.affectedRows > 0) {
           console.log('🔄 Affected rows > 0, trying LAST_INSERT_ID()...');
-          const lastIdResult = await query('SELECT LAST_INSERT_ID() as id');
+          const lastIdResult = await database.query('SELECT LAST_INSERT_ID() as id');
           console.log('✅ LAST_INSERT_ID result:', lastIdResult);
           if (lastIdResult.rows && lastIdResult.rows[0] && lastIdResult.rows[0].id) {
             videoId = lastIdResult.rows[0].id;
@@ -334,7 +271,7 @@ router.post('/', simpleAuth, upload.fields([
       // Approach 2: If still no ID, try to find the most recent video with our exact data
       if (!videoId) {
         console.log('🔄 No video ID found, searching by video filename...');
-        const searchResult = await query(`
+        const searchResult = await database.query(`
           SELECT id FROM videos 
           WHERE video_path = ? AND title = ? AND subject_id = ? 
           ORDER BY created_at DESC 
@@ -350,7 +287,7 @@ router.post('/', simpleAuth, upload.fields([
       // Approach 3: Last resort - get the most recent video
       if (!videoId) {
         console.log('🔄 Still no video ID, getting most recent video...');
-        const recentResult = await query('SELECT id FROM videos ORDER BY created_at DESC LIMIT 1');
+        const recentResult = await database.query('SELECT id FROM videos ORDER BY created_at DESC LIMIT 1');
         if (recentResult.rows && recentResult.rows.length > 0) {
           videoId = recentResult.rows[0].id;
           console.log('⚠️ Using most recent video ID as fallback:', videoId);
@@ -363,7 +300,7 @@ router.post('/', simpleAuth, upload.fields([
       
       // Now get the complete video data
       console.log(`🔄 Fetching complete video data for ID: ${videoId}`);
-      const createdVideoResult = await query(`
+      const createdVideoResult = await database.query(`
         SELECT 
           v.*,
           s.title as subject_title,
@@ -446,7 +383,7 @@ router.delete('/:id', simpleAuth, async (req, res) => {
     console.log(`🗑️ DELETE /api/videos/${id} for Medsaidabidi02 at 2025-09-09 17:15:30`);
     
     // Get video info before deletion
-    const videoInfo = await query('SELECT * FROM videos WHERE id = ?', [id]);
+    const videoInfo = await database.query('SELECT * FROM videos WHERE id = ?', [id]);
     
     if (videoInfo.rows.length === 0) {
       return res.status(404).json({ message: 'Video not found' });
@@ -455,7 +392,7 @@ router.delete('/:id', simpleAuth, async (req, res) => {
     const video = videoInfo.rows[0];
     
     // Delete video record from database
-    await query('DELETE FROM videos WHERE id = ?', [id]);
+    await database.query('DELETE FROM videos WHERE id = ?', [id]);
     
     // Try to delete physical files (don't fail if files don't exist)
     try {
@@ -559,7 +496,6 @@ router.get('/thumbnail/:filename', (req, res) => {
   }
 });
 
-// ✅ CRITICAL: Export the router as default AND named export
 export default router;
 export { router as videoRoutes };
 

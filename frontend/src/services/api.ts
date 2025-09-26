@@ -1,7 +1,7 @@
 export class ApiClient {
   private baseURL: string;
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001') {
+  constructor(baseURL: string = process.env.REACT_APP_API_URL || 'http://localhost:5001') {
     this.baseURL = baseURL;
     console.log('🚀 ApiClient initialized with baseURL:', baseURL);
   }

@@ -17,7 +17,7 @@ interface Draft {
   published?: boolean;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : '';
+const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/$/, '') : '';
 
 const resolveImage = (src?: string) => {
   if (!src) return '';

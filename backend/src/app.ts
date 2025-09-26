@@ -7,8 +7,32 @@ import path from 'path';
 import { usersRoutes } from './routes/users';
 import { userCoursesRoutes } from './routes/userCourses';
 import { debugRoutes } from './routes/debug';
+import { authRoutes } from './routes/auth';
+import { blogRoutes } from './routes/blog';
+import { videoRoutes } from './routes/videos';
+import { coursesRoutes } from './routes/courses';
+import { subjectsRoutes } from './routes/subjects';
 
-console.log('🚀 App starting for Azizkh07 at 2025-08-20 14:10:04');
+
+
+  // Hide all console output
+  console.log = () => {};
+  console.error = () => {};
+  console.warn = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+  console.trace = () => {};
+  console.dir = () => {};
+  console.time = () => {};
+  console.timeEnd = () => {};
+  console.assert = () => {};
+  console.clear = () => {};
+  console.count = () => {};
+  console.countReset = () => {};
+  console.group = () => {};
+  console.groupCollapsed = () => {};
+
+console.log('🚀 App starting for production deployment at', new Date().toISOString());
 
 const app = express();
 
@@ -17,67 +41,60 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ---------------------------------------------------------------------------
-// CORS configuration - explicit to allow Authorization header and preflight
+// CORS configuration - Fixed for production
 // ---------------------------------------------------------------------------
 const allowedOrigins = process.env.NODE_ENV === 'production'
-? [
-  'https://yourdomain.com',
-]
-: ['http://localhost:3000', 'http://localhost:3001'];
+  ? [
+      'https://cliniquedesjuristes.com',
+      'https://www.cliniquedesjuristes.com'
+    ]
+  : [
+      'http://localhost:3000', 
+      'http://localhost:3001', 
+      'http://localhost:5000',
+      'http://localhost:5001'
+    ];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // allow requests with no origin (like curl, mobile apps, server-to-server)
+    // Allow requests with no origin (like curl, mobile apps, server-to-server)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin as string) !== -1) {
       return callback(null, true);
     }
-    // For development convenience you can allow all origins by uncommenting below
+    // For development convenience
     if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
     callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Session-Token'], // ✅ ADDED X-Session-Token
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-Session-Token'],
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
   credentials: true,
   optionsSuccessStatus: 204
 };
 
-// Use configured CORS and ensure preflight responses are handled before other middleware
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Extra safety: set CORS/headers on every response (no-op if cors already handled)
-app.use((req, res, next) => {
-  const origin = req.header('origin') || '*';
-  // In production you probably want to echo allowed origin only
-  res.header('Access-Control-Allow-Origin', origin);
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Session-Token'); // ✅ ADDED X-Session-Token
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  // if this is a preflight request end it here
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
-// ---------------------------------------------------------------------------
-
-// Security middleware (disabled for development)
+// Security middleware
 if (process.env.NODE_ENV === 'production') {
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for now to avoid issues with React
+    crossOriginEmbedderPolicy: false
+  }));
   
   // Rate limiting for production
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    max: 200, // Increased limit for production
+    message: 'Too many requests from this IP, please try again later.'
   });
-  app.use(limiter);
+  app.use('/api/', limiter);
   console.log('🔒 Security middleware enabled for production');
 } else {
-  console.log('⚠️ Rate limiting DISABLED for development - Azizkh07');
+  console.log('⚠️ Rate limiting DISABLED for development');
 }
 
 // Logging
@@ -85,107 +102,142 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
-// ✅ FIXED: Serve static files for uploads
+// ✅ Serve static files for uploads FIRST (before API routes)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-console.log('📁 Static file serving enabled for uploads - Azizkh07');
+app.use('/uploads/blog', express.static(path.join(__dirname, '../uploads/blog')));
+app.use('/uploads/videos', express.static(path.join(__dirname, '../uploads/videos')));
+app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../uploads/thumbnails')));
+console.log('📁 Static file serving enabled for uploads');
+console.log('📁 Upload paths configured:');
+console.log('  - Main uploads:', path.join(__dirname, '../uploads'));
+console.log('  - Blog uploads:', path.join(__dirname, '../uploads/blog'));
+console.log('  - Video uploads:', path.join(__dirname, '../uploads/videos'));
+console.log('  - Thumbnail uploads:', path.join(__dirname, '../uploads/thumbnails'));
 
-// ✅ FIXED: Import routes with proper error handling
-console.log('🔗 Setting up routes for Azizkh07...');
-
-let coursesRoutes, subjectsRoutes, videoRoutes, authRoutes, blogRoutes;
-
-try {
-  // Import courses routes
-  const coursesModule = require('./routes/courses');
-  coursesRoutes = coursesModule.default || coursesModule;
-  console.log('✅ Courses routes imported successfully for Azizkh07');
-} catch (error: any) {
-  console.error('❌ Failed to import courses routes for Azizkh07:', error.message || error);
-  coursesRoutes = express.Router(); // Fallback empty router
-}
-
-try {
-  // Import subjects routes
-  const subjectsModule = require('./routes/subjects');
-  subjectsRoutes = subjectsModule.default || subjectsModule;
-  console.log('✅ Subjects routes imported successfully for Azizkh07');
-} catch (error: any) {
-  console.error('❌ Failed to import subjects routes for Azizkh07:', error.message || error);
-  subjectsRoutes = express.Router(); // Fallback empty router
-}
-
-try {
-  // Import videos routes
-  const videosModule = require('./routes/videos');
-  videoRoutes = videosModule.default || videosModule.videoRoutes || videosModule;
-  console.log('✅ Videos routes imported successfully for Azizkh07');
-} catch (error: any) {
-  console.error('❌ Failed to import videos routes for Azizkh07:', error.message || error);
-  videoRoutes = express.Router(); // Fallback empty router
-}
-
-try {
-  // Import auth routes
-  const authModule = require('./routes/auth');
-  authRoutes = authModule.authRoutes || authModule.default || authModule;
-  console.log('✅ Auth routes imported successfully for Azizkh07');
-} catch (error: any) {
-  console.error('❌ Failed to import auth routes for Azizkh07:', error.message || error);
-  authRoutes = express.Router(); // Fallback empty router
-}
-
-try {
-  // Import blog routes
-  const blogModule = require('./routes/blog');
-  blogRoutes = blogModule.default || blogModule.blogRoutes || blogModule;
-  console.log('✅ Blog routes imported successfully for Azizkh07');
-} catch (error: any) {
-  console.error('❌ Failed to import blog routes for Azizkh07:', error.message || error);
-  blogRoutes = express.Router(); // Fallback empty router
-}
-
-// ✅ FIXED: Use routes with validation
-app.use('/api/courses', coursesRoutes);
-app.use('/api/subjects', subjectsRoutes);
-app.use('/api/videos', videoRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/blog', blogRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/user-courses', userCoursesRoutes);
-app.use('/api/debug', debugRoutes);
-
-console.log('🔗 All routes configured for Azizkh07 at 2025-08-20 14:10:04');
-
-// Health check endpoint
+// Health check endpoint (before other routes)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Legal Education Platform API is running',
-    user: 'Azizkh07',
+    message: 'Clinique des Juristes API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
   });
 });
 
-// Catch-all for undefined routes
+app.get('/api/test-videos', (req, res) => {
+  res.json({ message: 'Direct test route working', timestamp: new Date().toISOString() });
+});
+
+// ✅ Import and setup API routes in correct order
+console.log('🔗 Setting up API routes...');
+
+// Auth routes first (no authentication required)
+app.use('/api/auth', authRoutes);
+console.log('✅ Auth routes configured: /api/auth');
+
+// Then other routes that may require authentication
+app.use('/api/videos', videoRoutes);
+console.log('✅ Video routes configured: /api/videos');
+
+app.use('/api/courses', coursesRoutes);
+console.log('✅ Course routes configured: /api/courses');
+
+app.use('/api/subjects', subjectsRoutes);
+console.log('✅ Subject routes configured: /api/subjects');
+
+app.use('/api/blog', blogRoutes);
+console.log('✅ Blog routes configured: /api/blog');
+
+app.use('/api/users', usersRoutes);
+console.log('✅ User routes configured: /api/users');
+
+app.use('/api/user-courses', userCoursesRoutes);
+console.log('✅ User-courses routes configured: /api/user-courses');
+
+// Debug routes last (usually admin only)
+app.use('/api/debug', debugRoutes);
+console.log('✅ Debug routes configured: /api/debug');
+
+console.log('🔗 All API routes configured successfully');
+
+// ✅ Serve React static files (AFTER API routes but BEFORE catch-all)
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from React build
+  app.use(express.static(path.join(__dirname, '../build')));
+  console.log('📱 Serving React build files from:', path.join(__dirname, '../build'));
+}
+
+// API 404 handler - for API routes that don't exist
 app.use('/api/*', (req, res) => {
-  console.log(`❌ 404: Route not found for Azizkh07: ${req.method} ${req.path}`);
+  console.log(`❌ 404: API route not found: ${req.method} ${req.path}`);
   res.status(404).json({ 
+    success: false,
     message: 'API endpoint not found',
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    available_endpoints: [
+      '/api/health',
+      '/api/auth/*',
+      '/api/videos/*',
+      '/api/courses/*',
+      '/api/subjects/*',
+      '/api/blog/*',
+      '/api/users/*',
+      '/api/user-courses/*',
+      '/api/debug/*'
+    ]
+  });
+});
+
+// ✅ React Router fallback (MUST be last)
+if (process.env.NODE_ENV === 'production') {
+  // Handle React Router - return all non-API requests to React app
+  app.get('*', (req, res) => {
+    console.log(`🎯 Serving React app for route: ${req.path}`);
+    res.sendFile(path.join(__dirname, '../build', 'index.html'));
+  });
+  console.log('🎯 React Router fallback configured');
+} else {
+  // Development fallback
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'API endpoint not found in development',
+        path: req.path,
+        method: req.method
+      });
+    }
+    res.json({ 
+      message: 'Development server - React app should be running on port 3000',
+      api_status: 'API server running',
+      timestamp: new Date().toISOString()
+    });
+  });
+}
+
+// Global error handler (MUST be last)
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('❌ Global error handler:', {
+    message: error.message,
+    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString()
   });
-});
-// Add this route to handle root path
-
-// Global error handler
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('❌ Global error handler for Azizkh07:', error);
+  
+  // Don't expose internal errors in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
   
   res.status(error.status || 500).json({
+    success: false,
     message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+    ...(isDevelopment && { 
+      stack: error.stack,
+      details: error.details 
+    }),
     timestamp: new Date().toISOString(),
     path: req.path
   });
@@ -193,4 +245,4 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 
 export default app;
 
-console.log('✅ App configuration completed for Azizkh07 at 2025-08-20 14:10:04');
+console.log('✅ App configuration completed at', new Date().toISOString());

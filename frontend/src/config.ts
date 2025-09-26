@@ -2,19 +2,17 @@
 
 // API configuration
 export const API_CONFIG = {
-  // Remove '/api' from BASE_URL since your api.ts already handles it
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001',
-  TIMEOUT: 30000, // 30 seconds
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5001',
+  TIMEOUT: 30000,
   
-  // API endpoints (these will be appended to BASE_URL)
   ENDPOINTS: {
-    VIDEOS: '/api/videos',
-    AUTH: '/api/auth',
-    COURSES: '/api/courses',
-    SUBJECTS: '/api/subjects',
-    USERS: '/api/users',
-    BLOG: '/api/blog',
-    HEALTH: '/api/health'
+    VIDEOS: '/videos',
+    AUTH: '/auth', 
+    COURSES: '/courses',
+    SUBJECTS: '/subjects',
+    USERS: '/users',
+    BLOG: '/blog',
+    HEALTH: '/health'
   }
 };
 

@@ -2,3 +2,5 @@
 .env
 .env.production
 uploads/
+
+/node_modules

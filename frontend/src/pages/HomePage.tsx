@@ -19,8 +19,8 @@ const HomePage: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Put your own hero image into public/assets/graduate.png or backend uploads path
   const HERO_IMAGE_PATH = '/assets/graduate.png';
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,10 +69,15 @@ const HomePage: React.FC = () => {
   const buildImgSrc = (rawPath: any, placeholder = '/api/placeholder/400/200') => {
     if (!rawPath) return resolveMediaUrl(undefined, placeholder);
     if (typeof rawPath !== 'string') return resolveMediaUrl(undefined, placeholder);
+  
+    // 👉 If it's from /assets, return as-is
+    if (rawPath.startsWith('/assets/')) return rawPath;
+  
     if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) return rawPath;
     const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
     return resolveMediaUrl(normalized, placeholder);
   };
+  
 
   const getCourseImageSrc = (course: any) => {
     const imageFields = [

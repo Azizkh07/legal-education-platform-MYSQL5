@@ -56,7 +56,7 @@ export interface CourseStatistics {
 
 class CourseService {
   private getBaseUrl(): string {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+    return process.env.REACT_APP_API_URL || 'http://localhost:5001';
   }
 
   private logAction(action: string, details?: any): void {

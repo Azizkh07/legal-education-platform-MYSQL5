@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { query } from '../database';
+import database from '../config/database';
 
 
 const JWT_SECRET = process.env.JWT_SECRET || 'legal-education-platform-super-secret-key-medsaidabidi02-2025-mysql5-version';
@@ -41,7 +41,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
     // Validate user exists and is approved
     try {
-      const result = await query('SELECT id, email, is_admin, is_approved FROM users WHERE id = ?', [decoded.id]);
+      const result = await database.query('SELECT id, email, is_admin, is_approved FROM users WHERE id = ?', [decoded.id]);
       
       if (result.rows.length === 0) {
         console.warn(`❌ User ${decoded.id} not found in database for Medsaidabidi02`);
@@ -138,7 +138,7 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
     
     // Try to get user info, but don't fail if not found
     try {
-      const result = await query('SELECT id, email, is_admin, is_approved FROM users WHERE id = ?', [decoded.id]);
+      const result = await database.query('SELECT id, email, is_admin, is_approved FROM users WHERE id = ?', [decoded.id]);
       
       if (result.rows.length > 0) {
         const user = result.rows[0];

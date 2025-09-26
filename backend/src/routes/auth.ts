@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { query } from '../database';
+import database from '../config/database';
 
 const router = express.Router();
 
@@ -30,13 +30,13 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Query only the columns that exist in your table and include is_approved
-    const userResult = await query(
+    // database.query only the columns that exist in your table and include is_approved
+    const userResult = await database.query(
       'SELECT id, name, email, password, is_admin, is_approved, created_at FROM users WHERE LOWER(TRIM(email)) = ?',
       [email]
     );
 
-    console.log('📊 Database query result for Medsaidabidi02:', {
+    console.log('📊 Database database.query result for Medsaidabidi02:', {
       rowCount: userResult.rows.length,
       foundUser: !!userResult.rows[0]
     });
@@ -98,16 +98,12 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT token using configurable expiry
     const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        isAdmin: user.is_admin || false
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      {  id: user.id,
+         email: user.email,
+        isAdmin: user.is_admin},
+      process.env.JWT_SECRET,
+      { expiresIn: '24h'}
     );
-
-    console.log('✅ Login successful for user id:', user.id, 'expiresIn:', JWT_EXPIRES_IN, 'by Medsaidabidi02');
 
     res.json({
       success: true,
@@ -152,7 +148,7 @@ router.post('/register', async (req, res) => {
     name = name.trim();
 
     // Check if user already exists
-    const existingUser = await query('SELECT id FROM users WHERE LOWER(TRIM(email)) = ?', [email]);
+    const existingUser = await database.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = ?', [email]);
     if (existingUser.rows.length > 0) {
       console.log('❌ User already exists with email:', email, 'by Medsaidabidi02');
       return res.status(409).json({
@@ -165,13 +161,13 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user (not approved by default, not admin)
-    const result = await query(
+    const result = await database.query(
       'INSERT INTO users (name, email, password, is_admin, is_approved) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashedPassword, false, false]
     );
 
     // Get the created user
-    const newUser = await query(
+    const newUser = await database.query(
       'SELECT id, name, email, is_admin, is_approved, created_at FROM users WHERE id = ?',
       [result.insertId]
     );
@@ -212,10 +208,10 @@ router.post('/reset-password-admin', async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await query('UPDATE users SET password = ?, updated_at = NOW() WHERE LOWER(TRIM(email)) = ?', [hashedPassword, email]);
+    await database.query('UPDATE users SET password = ?, updated_at = NOW() WHERE LOWER(TRIM(email)) = ?', [hashedPassword, email]);
 
     // Get updated user
-    const result = await query('SELECT id, name, email, is_admin, is_approved FROM users WHERE LOWER(TRIM(email)) = ?', [email]);
+    const result = await database.query('SELECT id, name, email, is_admin, is_approved FROM users WHERE LOWER(TRIM(email)) = ?', [email]);
 
     if (result.rows.length === 0) {
       console.log('❌ Reset password: user not found for email', email, 'by Medsaidabidi02');
@@ -271,7 +267,7 @@ router.post('/change-password', async (req, res) => {
     }
 
     // Get user from database
-    const userResult = await query('SELECT id, password FROM users WHERE id = ?', [decoded.id]);
+    const userResult = await database.query('SELECT id, password FROM users WHERE id = ?', [decoded.id]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
@@ -287,7 +283,7 @@ router.post('/change-password', async (req, res) => {
 
     // Hash and update new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    await query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [hashedNewPassword, decoded.id]);
+    await database.query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [hashedNewPassword, decoded.id]);
 
     console.log('✅ Password changed successfully for user:', decoded.id, 'by Medsaidabidi02');
     res.json({
@@ -322,7 +318,7 @@ router.get('/verify', async (req, res) => {
     }
 
     // Get fresh user data from database
-    const userResult = await query(
+    const userResult = await database.query(
       'SELECT id, name, email, is_admin, is_approved FROM users WHERE id = ?',
       [decoded.id]
     );
@@ -360,7 +356,7 @@ router.get('/verify', async (req, res) => {
 router.get('/debug-users', async (req, res) => {
   try {
     console.log('🔍 Listing users (debug) for Medsaidabidi02 at 2025-09-09 15:17:20');
-    const result = await query('SELECT id, name, email, is_admin, is_approved, created_at FROM users ORDER BY id');
+    const result = await database.query('SELECT id, name, email, is_admin, is_approved, created_at FROM users ORDER BY id');
     console.log('📊 Users for Medsaidabidi02:', result.rows);
     res.json({ success: true, users: result.rows, count: result.rows.length });
   } catch (error) {

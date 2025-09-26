@@ -1,16 +1,11 @@
 import express from 'express';
-import { query } from '../database';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import database from '../config/database';
 
 const router = express.Router();
 
 console.log('📚 FIXED User-Courses API loaded for Medsaidabidi02 - 2025-09-09 15:14:06');
 
-/**
- * POST /api/user-courses/enroll
- * Body: { userId: number, courseId: number }
- * Admin only: assign a user to a course
- */
 router.post('/enroll', authenticateToken, requireAdmin, async (req, res) => {
   // Temporary debug: log arrival and headers.auth
   console.log('[user-courses] POST /enroll received - headers.authorization =', req.headers.authorization ? '[RECEIVED]' : '[MISSING]');
@@ -32,26 +27,26 @@ router.post('/enroll', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     // Check if user exists
-    const userCheck = await query('SELECT id, name FROM users WHERE id = ?', [userId]);
+    const userCheck = await database.query('SELECT id, name FROM users WHERE id = ?', [userId]);
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Check if course exists
-    const courseCheck = await query('SELECT id, title FROM courses WHERE id = ?', [courseId]);
+    const courseCheck = await database.query('SELECT id, title FROM courses WHERE id = ?', [courseId]);
     if (courseCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
     // Avoid duplicate enrollment
-    const exists = await query('SELECT 1 FROM user_courses WHERE user_id = ? AND course_id = ?', [userId, courseId]);
+    const exists = await database.query('SELECT 1 FROM user_courses WHERE user_id = ? AND course_id = ?', [userId, courseId]);
     if (exists.rows.length > 0) {
       console.log(`⚠️ User ${userId} already enrolled in course ${courseId} for Medsaidabidi02`);
       return res.json({ success: true, message: 'User already enrolled', enrolled: true });
     }
 
     // Enroll user in course
-    await query('INSERT INTO user_courses (user_id, course_id, created_at) VALUES (?, ?, NOW())', [userId, courseId]);
+    await database.query('INSERT INTO user_courses (user_id, course_id, created_at) VALUES (?, ?, NOW())', [userId, courseId]);
     
     console.log(`✅ User ${userId} (${userCheck.rows[0].name}) enrolled in course ${courseId} (${courseCheck.rows[0].title}) by Medsaidabidi02`);
     res.json({ 
@@ -77,7 +72,7 @@ router.post('/enroll', authenticateToken, requireAdmin, async (req, res) => {
  */
 router.delete('/enroll', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // req.body for DELETE might be missing in some clients; handle both body and query
+    // req.body for DELETE might be missing in some clients; handle both body and database.query
     const userId = req.body.userId ?? req.query.userId;
     const courseId = req.body.courseId ?? req.query.courseId;
     
@@ -89,7 +84,7 @@ router.delete('/enroll', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     // Check if enrollment exists
-    const enrollmentCheck = await query(`
+    const enrollmentCheck = await database.query(`
       SELECT uc.id, u.name as user_name, c.title as course_title
       FROM user_courses uc
       JOIN users u ON uc.user_id = u.id
@@ -104,7 +99,7 @@ router.delete('/enroll', authenticateToken, requireAdmin, async (req, res) => {
     const enrollment = enrollmentCheck.rows[0];
 
     // Remove enrollment
-    await query('DELETE FROM user_courses WHERE user_id = ? AND course_id = ?', [userId, courseId]);
+    await database.query('DELETE FROM user_courses WHERE user_id = ? AND course_id = ?', [userId, courseId]);
 
     console.log(`✅ Enrollment removed: ${enrollment.user_name} from ${enrollment.course_title} by Medsaidabidi02`);
     res.json({ 
@@ -136,7 +131,7 @@ router.get('/me', authenticateToken, async (req: any, res) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const result = await query(`
+    const result = await database.query(`
       SELECT c.id, c.title, c.description, c.category, c.cover_image, c.is_active, c.thumbnail_path
       FROM user_courses uc
       JOIN courses c ON uc.course_id = c.id
@@ -166,19 +161,19 @@ router.get('/me', authenticateToken, async (req: any, res) => {
 router.get('/user/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    console.log(`📋 GET /api/user-courses/user/${userId} - Admin query for Medsaidabidi02 at 2025-09-09 15:14:06`);
+    console.log(`📋 GET /api/user-courses/user/${userId} - Admin database.query for Medsaidabidi02 at 2025-09-09 15:14:06`);
 
     if (!userId || isNaN(userId)) {
       return res.status(400).json({ success: false, message: 'Invalid user id' });
     }
 
     // Check if user exists
-    const userCheck = await query('SELECT id, name, email FROM users WHERE id = ?', [userId]);
+    const userCheck = await database.query('SELECT id, name, email FROM users WHERE id = ?', [userId]);
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const result = await query(`
+    const result = await database.query(`
       SELECT c.id, c.title, c.description, c.category, c.cover_image, c.is_active, c.thumbnail_path,
              uc.created_at as enrolled_at
       FROM user_courses uc
@@ -211,19 +206,19 @@ router.get('/user/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.get('/course/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const courseId = Number(req.params.id);
-    console.log(`📋 GET /api/user-courses/course/${courseId} - Admin query for Medsaidabidi02 at 2025-09-09 15:14:06`);
+    console.log(`📋 GET /api/user-courses/course/${courseId} - Admin database.query for Medsaidabidi02 at 2025-09-09 15:14:06`);
 
     if (!courseId || isNaN(courseId)) {
       return res.status(400).json({ success: false, message: 'Invalid course id' });
     }
 
     // Check if course exists
-    const courseCheck = await query('SELECT id, title, description FROM courses WHERE id = ?', [courseId]);
+    const courseCheck = await database.query('SELECT id, title, description FROM courses WHERE id = ?', [courseId]);
     if (courseCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
-    const result = await query(`
+    const result = await database.query(`
       SELECT u.id, u.name, u.email, u.is_admin, u.is_approved,
              uc.created_at as enrolled_at
       FROM user_courses uc
@@ -259,13 +254,13 @@ router.get('/stats', authenticateToken, requireAdmin, async (req, res) => {
 
     const [totalEnrollments, uniqueUsers, uniqueCourses, recentEnrollments] = await Promise.all([
       // Total enrollments
-      query('SELECT COUNT(*) as total_enrollments FROM user_courses'),
+      database.query('SELECT COUNT(*) as total_enrollments FROM user_courses'),
       // Unique users with enrollments
-      query('SELECT COUNT(DISTINCT user_id) as unique_users FROM user_courses'),
+      database.query('SELECT COUNT(DISTINCT user_id) as unique_users FROM user_courses'),
       // Unique courses with enrollments
-      query('SELECT COUNT(DISTINCT course_id) as unique_courses FROM user_courses'),
+      database.query('SELECT COUNT(DISTINCT course_id) as unique_courses FROM user_courses'),
       // Recent enrollments (last 7 days)
-      query(`
+      database.query(`
         SELECT COUNT(*) as recent_enrollments 
         FROM user_courses 
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query } from '../database/index';
+import database from '../config/database';
 
 const router = Router();
 
@@ -21,9 +21,9 @@ console.log('✅ Simple auth middleware loaded for courses');
 // GET all courses - REAL DATA ONLY
 router.get('/', async (req, res) => {
   try {
-    console.log('📋 GET /api/courses - Real database query for Azizkh07 at 2025-08-20 13:40:09');
+    console.log('📋 GET /api/courses - Real database database.query for Azizkh07 at 2025-08-20 13:40:09');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         c.id,
         c.title,
@@ -61,9 +61,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`📋 GET /api/courses/${id} - Real database query for Azizkh07 at 2025-08-20 13:40:09`);
+    console.log(`📋 GET /api/courses/${id} - Real database database.query for Azizkh07 at 2025-08-20 13:40:09`);
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         c.id,
         c.title,
@@ -116,7 +116,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Course title is required' });
     }
     
-    const result = await query(`
+    const result = await database.query(`
       INSERT INTO courses (title, description, cover_image, category, is_active)
       VALUES (?, ?, ?, ?, ?)
     `, [
@@ -128,7 +128,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     ]);
     
     // Get the created course
-    const createdCourse = await query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
+    const createdCourse = await database.query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
     
     console.log('✅ Real course created in database for Azizkh07:', createdCourse.rows[0]);
     res.status(201).json(createdCourse.rows[0]);
@@ -153,13 +153,13 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     console.log('📝 Update data:', { title, description, category, is_active });
     
     // Check if course exists first
-    const existsResult = await query('SELECT id FROM courses WHERE id = ?', [id]);
+    const existsResult = await database.query('SELECT id FROM courses WHERE id = ?', [id]);
     if (existsResult.rows.length === 0) {
       console.log(`❌ Course ${id} not found for update by Azizkh07`);
       return res.status(404).json({ message: 'Course not found' });
     }
     
-    await query(`
+    await database.query(`
       UPDATE courses
       SET title = COALESCE(?, title),
           description = COALESCE(?, description),
@@ -178,7 +178,7 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     ]);
     
     // Get the updated course
-    const updatedCourse = await query('SELECT * FROM courses WHERE id = ?', [id]);
+    const updatedCourse = await database.query('SELECT * FROM courses WHERE id = ?', [id]);
     
     console.log(`✅ Real course ${id} updated in database for Azizkh07`);
     res.json(updatedCourse.rows[0]);
@@ -200,7 +200,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     console.log('👤 User:', req.user?.name || req.user?.email);
     
     // Check if course exists and get its info
-    const courseCheck = await query('SELECT id, title FROM courses WHERE id = ?', [id]);
+    const courseCheck = await database.query('SELECT id, title FROM courses WHERE id = ?', [id]);
     if (courseCheck.rows.length === 0) {
       console.log(`❌ Course ${id} not found for deletion by Azizkh07`);
       return res.status(404).json({ message: 'Course not found' });
@@ -212,7 +212,7 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
       // Delete related videos first (they reference subjects)
       console.log('🔄 Step 1: Deleting related videos from database...');
-      const videosResult = await query(`
+      const videosResult = await database.query(`
         DELETE FROM videos 
         WHERE subject_id IN (
           SELECT id FROM subjects WHERE course_id = ?
@@ -222,17 +222,17 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
       
       // Delete related subjects
       console.log('🔄 Step 2: Deleting related subjects from database...');
-      const subjectsResult = await query('DELETE FROM subjects WHERE course_id = ?', [id]);
+      const subjectsResult = await database.query('DELETE FROM subjects WHERE course_id = ?', [id]);
       console.log(`✅ Deleted related subjects from database`);
       
       // Delete user_courses relations
       console.log('🔄 Step 3: Deleting user course assignments from database...');
-      const userCoursesResult = await query('DELETE FROM user_courses WHERE course_id = ?', [id]);
+      const userCoursesResult = await database.query('DELETE FROM user_courses WHERE course_id = ?', [id]);
       console.log(`✅ Deleted user course assignments from database`);
       
       // Finally delete the course
       console.log('🔄 Step 4: Deleting course from database...');
-      const courseResult = await query('DELETE FROM courses WHERE id = ?', [id]);
+      const courseResult = await database.query('DELETE FROM courses WHERE id = ?', [id]);
       
       console.log(`✅ Real course "${courseName}" (ID: ${id}) completely deleted from database for Azizkh07`);
       res.json({ 
@@ -261,12 +261,12 @@ router.get('/:id/subjects', async (req, res) => {
     const { id } = req.params;
     console.log(`📋 GET /api/courses/${id}/subjects - Real data for Azizkh07 at 2025-08-20 13:40:09`);
     
-    const courseResult = await query('SELECT * FROM courses WHERE id = ?', [id]);
+    const courseResult = await database.query('SELECT * FROM courses WHERE id = ?', [id]);
     if (courseResult.rows.length === 0) {
       return res.status(404).json({ message: 'Course not found' });
     }
     
-    const subjectsResult = await query(`
+    const subjectsResult = await database.query(`
       SELECT 
         s.*,
         COUNT(v.id) as video_count
@@ -292,4 +292,6 @@ router.get('/:id/subjects', async (req, res) => {
   }
 });
 
+
 export default router;
+export { router as coursesRoutes };

@@ -7,29 +7,23 @@ class Database {
   private pool: mysql.Pool;
 
   constructor() {
-    // Parse the DATABASE_URL or use individual components
     const dbUrl = process.env.DATABASE_URL;
     let connectionConfig: mysql.PoolOptions;
 
     if (dbUrl) {
-      // Parse MySQL URL format: mysql://user:password@host:port/database
       const url = new URL(dbUrl);
       connectionConfig = {
         host: url.hostname,
-        port: parseInt(url.port) || 3307, // Default to 3307
+        port: parseInt(url.port) || 3307,
         user: url.username,
         password: url.password,
-        database: url.pathname.slice(1), // Remove leading slash
+        database: url.pathname.slice(1),
         waitForConnections: true,
         connectionLimit: 20,
         queueLimit: 0,
-        acquireTimeout: 60000,
-        timeout: 60000,
-        reconnect: true,
         charset: 'utf8mb4'
       };
     } else {
-      // Fallback to individual environment variables
       connectionConfig = {
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '3307'),
@@ -39,25 +33,37 @@ class Database {
         waitForConnections: true,
         connectionLimit: 20,
         queueLimit: 0,
-        acquireTimeout: 60000,
-        timeout: 60000,
-        reconnect: true,
         charset: 'utf8mb4'
       };
     }
 
     this.pool = mysql.createPool(connectionConfig);
-
-    // Test connection
     this.testConnection();
   }
 
   async query(text: string, params?: any[]): Promise<any> {
     try {
-      const [rows] = await this.pool.execute(text, params);
-      return { rows };
+      const [rows, fields] = await this.pool.execute(text, params);
+      
+      // Handle INSERT/UPDATE/DELETE results
+      if (rows && typeof rows === 'object' && 'insertId' in rows) {
+        return {
+          rows: [],
+          fields,
+          insertId: (rows as any).insertId,
+          affectedRows: (rows as any).affectedRows
+        };
+      }
+      
+      // Handle SELECT results
+      return { 
+        rows: Array.isArray(rows) ? rows : [], 
+        fields,
+        insertId: undefined,
+        affectedRows: undefined
+      };
     } catch (error) {
-      console.error('❌ Query error:', error);
+      console.error('Query error:', error);
       throw error;
     }
   }
@@ -66,11 +72,10 @@ class Database {
     await this.pool.end();
   }
 
-  // Test connection
   async testConnection(): Promise<boolean> {
     try {
       const [rows] = await this.pool.execute('SELECT NOW() as now');
-      console.log('🔗 Connected to MySQL database on port 3307');
+      console.log('🔗 Connected to MySQL database');
       return true;
     } catch (error) {
       console.error('❌ Database connection failed:', error);
@@ -78,7 +83,6 @@ class Database {
     }
   }
 
-  // Get pool for advanced operations
   getPool(): mysql.Pool {
     return this.pool;
   }

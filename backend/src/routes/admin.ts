@@ -1,9 +1,9 @@
 import express from 'express';
-import { query } from '../database';
 import { AuthRequest, requireAdmin } from '../middleware/auth';
 import { upload, uploadVideo, uploadImage } from '../services/fileUpload';
 import { generateVideoKey } from '../services/videoSecurity';
 import bcrypt from 'bcrypt';
+import database from '../config/database';
 
 const router = express.Router();
 
@@ -37,7 +37,7 @@ router.post('/courses', upload.single('cover_image'), async (req: AuthRequest, r
     let slug = baseSlug;
     let counter = 1;
     while (true) {
-      const existingSlug = await query('SELECT id FROM courses WHERE slug = ?', [slug]);
+      const existingSlug = await database.query('SELECT id FROM courses WHERE slug = ?', [slug]);
       if (existingSlug.rows.length === 0) break;
       slug = `${baseSlug}-${counter++}`;
     }
@@ -48,13 +48,13 @@ router.post('/courses', upload.single('cover_image'), async (req: AuthRequest, r
       console.log('🖼️ Cover image uploaded for Medsaidabidi02:', coverImageUrl);
     }
 
-    const result = await query(`
+    const result = await database.query(`
       INSERT INTO courses (title, slug, description, excerpt, cover_image, category, thumbnail_path, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [title, slug, description, excerpt, coverImageUrl, category_id, coverImageUrl, true]);
 
     // Get the created course
-    const createdCourse = await query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
+    const createdCourse = await database.query('SELECT * FROM courses WHERE id = ?', [result.insertId]);
 
     console.log('✅ Course created for Medsaidabidi02:', createdCourse.rows[0].id);
     res.status(201).json(createdCourse.rows[0]);
@@ -69,7 +69,7 @@ router.get('/courses', async (req: AuthRequest, res) => {
   try {
     console.log('📋 Getting all courses for admin Medsaidabidi02 at 2025-09-09 15:18:39');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         c.*,
         COUNT(DISTINCT s.id) as subject_count,
@@ -99,7 +99,7 @@ router.put('/courses/:id', upload.single('cover_image'), async (req: AuthRequest
     console.log(`🔄 Updating course ${id} for Medsaidabidi02 at 2025-09-09 15:18:39`);
 
     // Check if course exists
-    const courseCheck = await query('SELECT id FROM courses WHERE id = ?', [id]);
+    const courseCheck = await database.query('SELECT id FROM courses WHERE id = ?', [id]);
     if (courseCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Course not found' });
     }
@@ -156,10 +156,10 @@ router.put('/courses/:id', upload.single('cover_image'), async (req: AuthRequest
     updateFields.push('updated_at = NOW()');
     values.push(id);
 
-    await query(`UPDATE courses SET ${updateFields.join(', ')} WHERE id = ?`, values);
+    await database.query(`UPDATE courses SET ${updateFields.join(', ')} WHERE id = ?`, values);
 
     // Get updated course
-    const updatedCourse = await query('SELECT * FROM courses WHERE id = ?', [id]);
+    const updatedCourse = await database.query('SELECT * FROM courses WHERE id = ?', [id]);
 
     console.log(`✅ Course ${id} updated for Medsaidabidi02`);
     res.json(updatedCourse.rows[0]);
@@ -183,7 +183,7 @@ router.post('/subjects', async (req: AuthRequest, res) => {
     }
 
     // Check if course exists
-    const courseCheck = await query('SELECT id FROM courses WHERE id = ?', [course_id]);
+    const courseCheck = await database.query('SELECT id FROM courses WHERE id = ?', [course_id]);
     if (courseCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Course not found' });
     }
@@ -191,17 +191,17 @@ router.post('/subjects', async (req: AuthRequest, res) => {
     // Get next order index if not provided
     let finalOrderIndex = order_index;
     if (!finalOrderIndex) {
-      const maxOrder = await query('SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM subjects WHERE course_id = ?', [course_id]);
+      const maxOrder = await database.query('SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM subjects WHERE course_id = ?', [course_id]);
       finalOrderIndex = maxOrder.rows[0].next_order;
     }
 
-    const result = await query(`
+    const result = await database.query(`
       INSERT INTO subjects (course_id, title, description, professor_name, hours, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [course_id, title, description || '', professor_name, hours || 0, finalOrderIndex, true]);
 
     // Get the created subject
-    const createdSubject = await query('SELECT * FROM subjects WHERE id = ?', [result.insertId]);
+    const createdSubject = await database.query('SELECT * FROM subjects WHERE id = ?', [result.insertId]);
 
     console.log('✅ Subject created for Medsaidabidi02:', createdSubject.rows[0].id);
     res.status(201).json(createdSubject.rows[0]);
@@ -229,7 +229,7 @@ router.post('/videos', upload.single('video'), async (req: AuthRequest, res) => 
     }
 
     // Check if subject exists
-    const subjectCheck = await query('SELECT id FROM subjects WHERE id = ?', [subject_id]);
+    const subjectCheck = await database.query('SELECT id FROM subjects WHERE id = ?', [subject_id]);
     if (subjectCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Subject not found' });
     }
@@ -244,7 +244,7 @@ router.post('/videos', upload.single('video'), async (req: AuthRequest, res) => 
     // Get next order index if not provided
     let finalOrderIndex = order_index;
     if (!finalOrderIndex) {
-      const maxOrder = await query('SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM videos WHERE subject_id = ?', [subject_id]);
+      const maxOrder = await database.query('SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM videos WHERE subject_id = ?', [subject_id]);
       finalOrderIndex = maxOrder.rows[0].next_order;
     }
 
@@ -252,13 +252,13 @@ router.post('/videos', upload.single('video'), async (req: AuthRequest, res) => 
     const videoKey = generateVideoKey();
     const videoPath = req.file.filename; // Use the uploaded filename
 
-    const result = await query(`
+    const result = await database.query(`
       INSERT INTO videos (subject_id, title, description, video_path, file_path, file_size, mime_type, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [subject_id, title, description || '', videoPath, videoPath, req.file.size, req.file.mimetype, finalOrderIndex, true]);
 
     // Get the created video
-    const createdVideo = await query('SELECT * FROM videos WHERE id = ?', [result.insertId]);
+    const createdVideo = await database.query('SELECT * FROM videos WHERE id = ?', [result.insertId]);
 
     console.log('✅ Video uploaded for Medsaidabidi02:', createdVideo.rows[0].id);
     res.status(201).json(createdVideo.rows[0]);
@@ -292,7 +292,7 @@ router.post('/blog', upload.single('cover_image'), async (req: AuthRequest, res)
     let slug = baseSlug;
     let counter = 1;
     while (true) {
-      const existingSlug = await query('SELECT id FROM blog_posts WHERE slug = ?', [slug]);
+      const existingSlug = await database.query('SELECT id FROM blog_posts WHERE slug = ?', [slug]);
       if (existingSlug.rows.length === 0) break;
       slug = `${baseSlug}-${counter++}`;
     }
@@ -303,13 +303,13 @@ router.post('/blog', upload.single('cover_image'), async (req: AuthRequest, res)
       console.log('🖼️ Blog cover image uploaded for Medsaidabidi02:', coverImageUrl);
     }
 
-    const result = await query(`
+    const result = await database.query(`
       INSERT INTO blog_posts (title, slug, content, excerpt, cover_image, author_id, published, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
     `, [title, slug, content, excerpt || '', coverImageUrl, adminId, true]);
 
     // Get the created blog post
-    const createdPost = await query('SELECT * FROM blog_posts WHERE id = ?', [result.insertId]);
+    const createdPost = await database.query('SELECT * FROM blog_posts WHERE id = ?', [result.insertId]);
 
     console.log('✅ Blog post created for Medsaidabidi02:', createdPost.rows[0].id);
     res.status(201).json(createdPost.rows[0]);
@@ -326,7 +326,7 @@ router.get('/users', async (req: AuthRequest, res) => {
   try {
     console.log('👥 Getting all users for admin Medsaidabidi02 at 2025-09-09 15:18:39');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT id, name, email, is_admin, is_approved, created_at, updated_at
       FROM users
       ORDER BY created_at DESC
@@ -346,10 +346,10 @@ router.post('/users/:id/approve', async (req: AuthRequest, res) => {
     const { id } = req.params;
     console.log(`✅ Approving user ${id} for admin Medsaidabidi02 at 2025-09-09 15:18:39`);
 
-    await query('UPDATE users SET is_approved = true, updated_at = NOW() WHERE id = ?', [id]);
+    await database.query('UPDATE users SET is_approved = true, updated_at = NOW() WHERE id = ?', [id]);
 
     // Get updated user
-    const updatedUser = await query('SELECT id, name, email, is_admin, is_approved FROM users WHERE id = ?', [id]);
+    const updatedUser = await database.query('SELECT id, name, email, is_admin, is_approved FROM users WHERE id = ?', [id]);
 
     if (updatedUser.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -377,11 +377,11 @@ router.get('/dashboard/stats', async (req: AuthRequest, res) => {
       usersCount,
       blogPostsCount
     ] = await Promise.all([
-      query('SELECT COUNT(*) as count FROM courses WHERE is_active = true'),
-      query('SELECT COUNT(*) as count FROM subjects WHERE is_active = true'),
-      query('SELECT COUNT(*) as count FROM videos WHERE is_active = true'),
-      query('SELECT COUNT(*) as count FROM users'),
-      query('SELECT COUNT(*) as count FROM blog_posts WHERE published = true')
+      database.query('SELECT COUNT(*) as count FROM courses WHERE is_active = true'),
+      database.query('SELECT COUNT(*) as count FROM subjects WHERE is_active = true'),
+      database.query('SELECT COUNT(*) as count FROM videos WHERE is_active = true'),
+      database.query('SELECT COUNT(*) as count FROM users'),
+      database.query('SELECT COUNT(*) as count FROM blog_posts WHERE published = true')
     ]);
 
     const stats = {

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../database/index';
 import { authenticateToken } from '../middleware/auth';
+import database from '../config/database';
 
 const router = Router();
 
@@ -11,7 +11,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     console.log('📋 GET /api/subjects - Fetching subjects for Medsaidabidi02 at 2025-09-09 16:01:15');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         s.*,
         c.title as course_title,
@@ -47,7 +47,7 @@ router.get('/course/:courseId', async (req: Request, res: Response) => {
     const { courseId } = req.params;
     console.log(`📋 GET /api/subjects/course/${courseId} for Medsaidabidi02`);
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         s.*,
         c.title as course_title,
@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
     }
     
     // Check if course exists
-    const courseCheck = await query('SELECT id, title FROM courses WHERE id = ?', [course_id]);
+    const courseCheck = await database.query('SELECT id, title FROM courses WHERE id = ?', [course_id]);
     
     if (courseCheck.rows.length === 0) {
       return res.status(404).json({ 
@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
     
     try {
       // Approach 1: Try direct INSERT and get insertId
-      const insertResult = await query(`
+      const insertResult = await database.query(`
         INSERT INTO subjects (
           title, course_id, professor_name, hours, description, is_active
         )
@@ -153,7 +153,7 @@ router.post('/', async (req, res) => {
         // Method 4: Check affectedRows and get LAST_INSERT_ID
         else if (insertResult.affectedRows && insertResult.affectedRows > 0) {
           console.log('🔄 Affected rows > 0, trying LAST_INSERT_ID()...');
-          const lastIdResult = await query('SELECT LAST_INSERT_ID() as id');
+          const lastIdResult = await database.query('SELECT LAST_INSERT_ID() as id');
           console.log('✅ LAST_INSERT_ID result:', lastIdResult);
           if (lastIdResult.rows && lastIdResult.rows[0] && lastIdResult.rows[0].id) {
             subjectId = lastIdResult.rows[0].id;
@@ -165,7 +165,7 @@ router.post('/', async (req, res) => {
       // Approach 2: If still no ID, try to find the most recent subject with our exact data
       if (!subjectId) {
         console.log('🔄 No subject ID found, searching by title and course...');
-        const searchResult = await query(`
+        const searchResult = await database.query(`
           SELECT id FROM subjects 
           WHERE title = ? AND course_id = ? AND professor_name = ? 
           ORDER BY created_at DESC 
@@ -181,7 +181,7 @@ router.post('/', async (req, res) => {
       // Approach 3: Last resort - get the most recent subject
       if (!subjectId) {
         console.log('🔄 Still no subject ID, getting most recent subject...');
-        const recentResult = await query('SELECT id FROM subjects ORDER BY created_at DESC LIMIT 1');
+        const recentResult = await database.query('SELECT id FROM subjects ORDER BY created_at DESC LIMIT 1');
         if (recentResult.rows && recentResult.rows.length > 0) {
           subjectId = recentResult.rows[0].id;
           console.log('⚠️ Using most recent subject ID as fallback:', subjectId);
@@ -194,7 +194,7 @@ router.post('/', async (req, res) => {
       
       // Now get the complete subject data with course info
       console.log(`🔄 Fetching complete subject data for ID: ${subjectId}`);
-      const createdSubjectResult = await query(`
+      const createdSubjectResult = await database.query(`
         SELECT 
           s.*,
           c.title as course_title,
@@ -268,7 +268,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     console.log(`📋 GET /api/subjects/${id} for Medsaidabidi02`);
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT 
         s.*,
         c.title as course_title,
@@ -313,7 +313,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
     console.log(`📝 PUT /api/subjects/${id} for Medsaidabidi02`);
     
     // Check if subject exists
-    const existingSubject = await query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
+    const existingSubject = await database.query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
     if (existingSubject.rows.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -329,14 +329,14 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
     const cleanOrderIndex = order_index !== undefined ? parseInt(String(order_index)) : existingSubject.rows[0].order_index;
 
     // Update subject
-    await query(`
+    await database.query(`
       UPDATE subjects 
       SET title = ?, description = ?, professor_name = ?, hours = ?, order_index = ?, updated_at = NOW()
       WHERE id = ?
     `, [cleanTitle, cleanDescription, cleanProfessorName, cleanHours, cleanOrderIndex, id]);
 
     // Get updated subject
-    const updatedSubject = await query(`
+    const updatedSubject = await database.query(`
       SELECT 
         s.*,
         c.title as course_title
@@ -369,7 +369,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
     console.log(`🗑️ DELETE /api/subjects/${id} for Medsaidabidi02`);
     
     // Check if subject exists
-    const existingSubject = await query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
+    const existingSubject = await database.query('SELECT * FROM subjects WHERE id = ? AND is_active = true', [id]);
     if (existingSubject.rows.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -378,7 +378,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
     }
 
     // Soft delete
-    await query('UPDATE subjects SET is_active = false, updated_at = NOW() WHERE id = ?', [id]);
+    await database.query('UPDATE subjects SET is_active = false, updated_at = NOW() WHERE id = ?', [id]);
 
     console.log(`✅ Subject ${id} deleted successfully for Medsaidabidi02`);
     res.status(200).json({

@@ -1,16 +1,17 @@
 import app from './app';
 import { config } from './config';
-import { query } from './database'; // Import the helper function
+import database from './config/database';
+
 
 const startServer = async () => {
   try {
     // Test database connection using the helper function
-    const testResult = await query('SELECT NOW() as now');
+    const testResult = await database.query('SELECT NOW() as now');
     console.log(`✅ Database test query successful for Medsaidabidi02: ${JSON.stringify(testResult.rows)}`);
     console.log('✅ Database connected successfully');
 
     // Check if admin exists
-    const adminCheck = await query(
+    const adminCheck = await database.query(
       'SELECT email, is_admin, is_approved FROM users WHERE is_admin = true'
     );
     
@@ -34,6 +35,23 @@ const startServer = async () => {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
+
+  // Hide all console output
+console.log = () => {};
+console.error = () => {};
+console.warn = () => {};
+console.info = () => {};
+console.debug = () => {};
+console.trace = () => {};
+console.dir = () => {};
+console.time = () => {};
+console.timeEnd = () => {};
+console.assert = () => {};
+console.clear = () => {};
+console.count = () => {};
+console.countReset = () => {};
+console.group = () => {};
+console.groupCollapsed = () => {};
 };
 
 startServer();

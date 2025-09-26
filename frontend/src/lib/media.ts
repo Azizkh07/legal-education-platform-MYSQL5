@@ -1,4 +1,4 @@
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+export const API_BASE = (process.env.REACT_APP_API_URL ||'').replace(/\/$/, '');
 
 export function resolveMediaUrl(src?: string, fallbackPath = '/api/placeholder/400/200'): string {
   if (!src) {

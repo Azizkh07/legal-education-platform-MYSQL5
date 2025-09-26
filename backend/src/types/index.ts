@@ -1,3 +1,4 @@
+import { Request } from 'express';
 export interface User {
   id: number;
   name: string;
@@ -9,6 +10,9 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
+
+
+
 
 export interface Course {
   id: number;
@@ -66,4 +70,19 @@ export interface ApiResponse<T = any> {
     total: number;
     pages: number;
   };
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        email: string;
+        name?: string;
+        isAdmin?: boolean;
+        is_admin?: boolean;
+        is_approved?: boolean;
+      };
+    }
+  }
 }

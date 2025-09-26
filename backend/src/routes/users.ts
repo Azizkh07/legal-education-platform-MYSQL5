@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import { query } from '../database';
+import database from '../config/database';
 
 const router = express.Router();
 
@@ -42,7 +42,7 @@ router.post('/create', async (req, res) => {
     const finalPassword = password && password.trim() !== '' ? password : generatePassword();
 
     // Check duplicate
-    const existing = await query('SELECT id FROM users WHERE email = ?', [finalEmail]);
+    const existing = await database.query('SELECT id FROM users WHERE email = ?', [finalEmail]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ success: false, message: 'User with this email already exists' });
     }
@@ -50,13 +50,13 @@ router.post('/create', async (req, res) => {
     const hashed = await bcrypt.hash(finalPassword, 10);
 
     // Insert user
-    const insertResult = await query(`
+    const insertResult = await database.query(`
       INSERT INTO users (name, email, password, is_admin, is_approved)
       VALUES (?, ?, ?, ?, ?)
     `, [name, finalEmail, hashed, isAdmin, isApproved]);
 
     // Get the created user
-    const newUser = await query(
+    const newUser = await database.query(
       'SELECT id, name, email, is_admin, is_approved, created_at, updated_at FROM users WHERE id = ?',
       [insertResult.insertId]
     );
@@ -83,7 +83,7 @@ router.get('/', async (req, res) => {
   try {
     console.log('📋 GET /api/users - Fetching all users for Medsaidabidi02 at 2025-09-09 15:12:54');
     
-    const result = await query(`
+    const result = await database.query(`
       SELECT id, name, email, is_admin, is_approved, created_at, updated_at
       FROM users
       ORDER BY created_at DESC
@@ -104,10 +104,10 @@ router.put('/:id/approve', async (req, res) => {
     console.log(`🔄 PUT /api/users/${id}/approve - Approving user for Medsaidabidi02 at 2025-09-09 15:12:54`);
 
     // Update user approval status
-    await query('UPDATE users SET is_approved = true WHERE id = ?', [id]);
+    await database.query('UPDATE users SET is_approved = true WHERE id = ?', [id]);
 
     // Get the updated user
-    const result = await query(
+    const result = await database.query(
       'SELECT id, name, email, is_admin, is_approved, created_at, updated_at FROM users WHERE id = ?',
       [id]
     );
@@ -149,10 +149,10 @@ router.put('/:id', async (req, res) => {
     fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id); // Add id at the end for WHERE clause
 
-    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+    await database.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
 
     // Get the updated user
-    const result = await query(
+    const result = await database.query(
       'SELECT id, name, email, is_admin, is_approved, created_at, updated_at FROM users WHERE id = ?',
       [id]
     );
@@ -176,7 +176,7 @@ router.delete('/:id', async (req, res) => {
     console.log(`🗑️ DELETE /api/users/${id} - Deleting user for Medsaidabidi02 at 2025-09-09 15:12:54`);
 
     // Check if user exists first
-    const userCheck = await query('SELECT id, name, email FROM users WHERE id = ?', [id]);
+    const userCheck = await database.query('SELECT id, name, email FROM users WHERE id = ?', [id]);
     if (userCheck.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -184,7 +184,7 @@ router.delete('/:id', async (req, res) => {
     const userName = userCheck.rows[0].name;
 
     // Delete the user
-    await query('DELETE FROM users WHERE id = ?', [id]);
+    await database.query('DELETE FROM users WHERE id = ?', [id]);
 
     console.log(`✅ User ${id} (${userName}) deleted by Medsaidabidi02`);
     res.json({ success: true, message: 'User deleted', deletedUser: { id, name: userName } });
@@ -208,10 +208,10 @@ router.post('/reset-password', async (req, res) => {
     const hashed = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await query('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?', [hashed, email]);
+    await database.query('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?', [hashed, email]);
 
     // Get the updated user
-    const result = await query(
+    const result = await database.query(
       'SELECT id, name, email, is_admin, is_approved FROM users WHERE email = ?',
       [email]
     );
