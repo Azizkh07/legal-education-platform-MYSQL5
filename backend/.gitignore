@@ -1,6 +1,13 @@
 # ignore environment file and uploaded files
-.env
-.env.production
-uploads/
 
+uploads
+
+/dist
 /node_modules
+
+
+# Environment files
+.env
+.env.*
+!.env.example
+
