@@ -55,6 +55,9 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'http://localhost:5001'
     ];
 
+
+
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like curl, mobile apps, server-to-server)
@@ -75,8 +78,19 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 204
 };
 
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+
+app.use('/api', (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  next();
+});
 
 // Security middleware
 if (process.env.NODE_ENV === 'production') {
@@ -107,6 +121,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/uploads/blog', express.static(path.join(__dirname, '../uploads/blog')));
 app.use('/uploads/videos', express.static(path.join(__dirname, '../uploads/videos')));
 app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../uploads/thumbnails')));
+
 console.log('📁 Static file serving enabled for uploads');
 console.log('📁 Upload paths configured:');
 console.log('  - Main uploads:', path.join(__dirname, '../uploads'));
@@ -190,6 +205,8 @@ app.use('/api/*', (req, res) => {
     ]
   });
 });
+
+
 
 // ✅ React Router fallback (MUST be last)
 if (process.env.NODE_ENV === 'production') {

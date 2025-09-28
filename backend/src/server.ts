@@ -2,7 +2,6 @@ import app from './app';
 import { config } from './config';
 import database from './config/database';
 
-
 const startServer = async () => {
   try {
     // Test database connection using the helper function
@@ -24,35 +23,24 @@ const startServer = async () => {
       })));
     }
     
-    // Start server
-    app.listen(config.port, () => {
-      console.log(`🚀 Server running on port ${config.port}`);
-      console.log(`🌍 Environment: ${config.nodeEnv}`);
-      console.log(`📡 API URL: ${config.apiUrl}`);
-      console.log(`📁 Uploads path: ${config.storage.uploadsPath}`);
-    });
+    // Only start server if this file is run directly (not through Passenger)
+    if (require.main === module) {
+      app.listen(config.port, () => {
+        console.log(`🚀 Server running on port ${config.port}`);
+        console.log(`🌍 Environment: ${config.nodeEnv}`);
+        console.log(`📡 API URL: ${config.apiUrl}`);
+        console.log(`📁 Uploads path: ${config.storage.uploadsPath}`);
+      });
+    }
   } catch (error) {
     console.error('❌ Failed to start server:', error);
-    process.exit(1);
+    if (require.main === module) {
+      process.exit(1);
+    }
+    throw error; // Re-throw for Passenger
   }
-
-  // Hide all console output
-console.log = () => {};
-console.error = () => {};
-console.warn = () => {};
-console.info = () => {};
-console.debug = () => {};
-console.trace = () => {};
-console.dir = () => {};
-console.time = () => {};
-console.timeEnd = () => {};
-console.assert = () => {};
-console.clear = () => {};
-console.count = () => {};
-console.countReset = () => {};
-console.group = () => {};
-console.groupCollapsed = () => {};
 };
 
+// Initialize the server
 startServer();
 

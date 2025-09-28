@@ -14,9 +14,9 @@ class Database {
       const url = new URL(dbUrl);
       connectionConfig = {
         host: url.hostname,
-        port: parseInt(url.port) || 3307,
-        user: url.username,
-        password: url.password,
+        port: parseInt(url.port) || 3306, // Changed from 3307 to 3306
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
         database: url.pathname.slice(1),
         waitForConnections: true,
         connectionLimit: 20,
@@ -26,10 +26,10 @@ class Database {
     } else {
       connectionConfig = {
         host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '3307'),
-        user: process.env.DB_USER || 'legal_app_user',
-        password: process.env.DB_PASSWORD || 'ROOT',
-        database: process.env.DB_NAME || 'legal_education_mysql5',
+        port: parseInt(process.env.DB_PORT || '3306'), // Changed from 3307 to 3306
+        user: process.env.DB_USER || 'c2668909c_clinique_user',
+        password: process.env.DB_PASSWORD || 'bKM8P}ZPWhH+{)Fg',
+        database: process.env.DB_NAME || 'c2668909c_clinique_db',
         waitForConnections: true,
         connectionLimit: 20,
         queueLimit: 0,
@@ -89,3 +89,6 @@ class Database {
 }
 
 export default new Database();
+
+
+//database mta3 local al bureau 

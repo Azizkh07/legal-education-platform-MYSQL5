@@ -30,6 +30,7 @@ export const authService = {
     try {
       console.log('🔐 Attempting login with:', { email: credentials.email, passwordLength: credentials.password.length });
       
+      
       const response = await api.post<LoginResponse>('/auth/login', credentials);
       
       if (response && response.token && response.user) {

@@ -31,38 +31,6 @@ export class ApiClient {
     return headers;
   }
 
-  async login(credentials: { email: string; password: string }) {
-    console.log('🔐 ApiClient: Login attempt for:', credentials.email);
-    
-    try {
-      const response = await this.post('/api/auth/login', credentials);
-      
-      console.log('📡 Login response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Login failed:', errorText);
-        throw new Error(errorText || 'Login failed');
-      }
-
-      const data = await response.json();
-      console.log('✅ Login response data:', data);
-      
-      if (data.success && data.token) {
-        this.setToken(data.token);
-        console.log('✅ Login successful, token set');
-      } else {
-        console.error('❌ Login response missing token or success flag');
-        throw new Error('Invalid login response');
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('❌ Login error:', error);
-      throw error;
-    }
-  }
-
   async get(endpoint: string): Promise<Response> {
     const url = `${this.baseURL}${endpoint}`;
     console.log('🔗 GET request to:', url);
